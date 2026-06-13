@@ -11,7 +11,14 @@ import html
 import json
 
 from .cases import CATEGORY_DESCRIPTIONS
-from .graders import CODE_DIMENSIONS, DIMENSION_DESCRIPTIONS, DIMENSIONS, JUDGE_DIMENSIONS
+from .graders import (
+    CODE_DIMENSIONS,
+    CORRECTNESS,
+    DIMENSION_DESCRIPTIONS,
+    DIMENSIONS,
+    FAITHFULNESS,
+    JUDGE_DIMENSIONS,
+)
 
 
 def write_json(path: str, report: dict) -> None:
@@ -55,6 +62,49 @@ def _card(dim: str, agg: dict) -> str:
         f'<div class="card"><div class="card-title">{_esc(dim)}</div>'
         f'<div class="card-num">{pass_pct}</div><div class="card-sub">{sub}</div></div>'
     )
+
+
+def _spotlight(report: dict) -> str:
+    """Surface failing cases and the 'correct answer but ungrounded' pattern up top."""
+    failing: list[tuple[str, str, list[str]]] = []
+    ungrounded: list[tuple[str, str]] = []
+    for case in report["cases"]:
+        graders = case["graders"]
+        bad = []
+        for dim in DIMENSIONS:
+            g = graders[dim]
+            if not g["applicable"]:
+                continue
+            if g["kind"] == "code" and not g["passed"]:
+                bad.append(f"{dim}: fail")
+            elif g["kind"] == "judge" and g["score"] < 2:
+                bad.append(f"{dim}: {int(g['score'])}")
+        if bad:
+            failing.append((case["id"], case["category"], bad))
+        corr, faith = graders[CORRECTNESS], graders[FAITHFULNESS]
+        if corr["applicable"] and faith["applicable"] and corr["score"] == 2 and faith["score"] == 0:
+            ungrounded.append((case["id"], faith["rationale"]))
+
+    if not failing and not ungrounded:
+        return '<details class="spotlight"><summary>✓ No failures</summary></details>'
+
+    parts = ""
+    if ungrounded:
+        items = "".join(
+            f"<li><b>{_esc(cid)}</b> — correct answer but ungrounded: {_esc(r)}</li>"
+            for cid, r in ungrounded
+        )
+        parts += (
+            '<div class="spot-h">Right answer, wrong grounding (correctness 2 · faithfulness 0)</div>'
+            f"<ul>{items}</ul>"
+        )
+    if failing:
+        items = "".join(
+            f'<li><b>{_esc(cid)}</b> <span class="ccat">[{_esc(cat)}]</span> — {_esc(", ".join(bad))}</li>'
+            for cid, cat, bad in failing
+        )
+        parts += f'<div class="spot-h">Cases needing attention</div><ul>{items}</ul>'
+    return '<details open class="spotlight"><summary>⚠ Needs attention</summary>' + parts + "</details>"
 
 
 def _summary_cards(report: dict) -> str:
@@ -253,6 +303,9 @@ table{border-collapse:collapse;width:100%;margin:.3rem 0}
 .badge.good{background:#2e8b57}.badge.mid{background:#c89010}.badge.bad{background:#c0392b}.badge.na{background:#bbb}
 details{margin:.5rem 0;border:1px solid #eee;border-radius:8px;padding:.5rem .75rem;background:#fafafa}
 summary{cursor:pointer;font-weight:600}
+.spotlight{margin-top:1rem;border-color:#e7c9c9;background:#fdf6f6}
+.spot-h{font-weight:600;color:#b0413a;margin:.5rem 0 .2rem}
+.spotlight ul{margin:.2rem 0 .4rem 1rem;font-size:13px}.spotlight .ccat{color:#999;font-size:11px}
 .grade-block{border-top:1px solid #eee;padding:.4rem 0}.gb-id{font-weight:600;color:#0a5}
 .grade-block ul{margin:.2rem 0 .2rem 1rem;font-size:12px;color:#444}
 .transcript{border-top:1px solid #eee;padding:.6rem 0}.t-q{font-weight:600;color:#0a5}
@@ -270,6 +323,7 @@ def write_html(path: str, report: dict) -> None:
         f"<div class='meta'>Agent: {_esc(meta['agent_model'])} · Judge: {_esc(meta['judge_model'])} "
         f"· {meta['n_cases']} cases · {_esc(meta['timestamp'])}</div>"
         + _summary_cards(report)
+        + _spotlight(report)
         + _chart_dimensions(report)
         + _chart_categories(report)
         + _legend()
