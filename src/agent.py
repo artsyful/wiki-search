@@ -1,0 +1,156 @@
+"""The tool-use agent loop: Claude + two Wikipedia tools → a grounded AgentAnswer.
+
+See DESIGN.md → Agent Loop. The loop is manual (not the SDK tool runner) so we can
+track whether search was used, count tool calls, cap multi-hop, and surface progress.
+"""
+
+from __future__ import annotations
+
+import re
+from dataclasses import dataclass
+from typing import Callable
+
+import anthropic
+
+from .prompts import DEFAULT_MODEL, FETCH_TOOL, SEARCH_TOOL, SYSTEM_PROMPT, TOOLS
+from .wiki_client import fetch_section, search_wikipedia
+
+MAX_TOOL_CALLS = 8
+MAX_TOKENS = 8000
+
+ProgressFn = Callable[[str], None] | None
+
+_URL_RE = re.compile(r"https?://\S+")
+
+
+@dataclass
+class Citation:
+    title: str
+    url: str
+
+
+@dataclass
+class AgentAnswer:
+    text: str
+    citations: list[Citation]
+    used_search: bool
+    tool_calls: int
+
+
+def _extract_text(content: list) -> str:
+    return "".join(block.text for block in content if block.type == "text")
+
+
+def _parse_citations(text: str) -> list[Citation]:
+    """Pull Title — URL pairs out of the answer's Sources list."""
+    citations: list[Citation] = []
+    seen: set[str] = set()
+    for line in text.splitlines():
+        match = _URL_RE.search(line)
+        if not match:
+            continue
+        url = match.group(0).rstrip(").,;]")
+        if url in seen:
+            continue
+        seen.add(url)
+        title = line[: match.start()].strip(" -–—•*\t")
+        citations.append(Citation(title=title or url, url=url))
+    return citations
+
+
+def _format_search_results(query: str, results: list) -> str:
+    if not results:
+        return f"No Wikipedia articles found for '{query}'. Try different search terms."
+    blocks = []
+    for result in results:
+        sections = ", ".join(result.section_titles[:12]) if result.section_titles else "(none)"
+        blocks.append(
+            f"## {result.title}\n"
+            f"URL: {result.url}\n"
+            f"Summary: {result.summary or '(no summary available)'}\n"
+            f"Sections: {sections}"
+        )
+    return "\n\n".join(blocks)
+
+
+class WikiAgent:
+    """Answers a question by grounding it in Wikipedia via the tool-use loop."""
+
+    def __init__(
+        self,
+        client: anthropic.Anthropic | None = None,
+        model: str = DEFAULT_MODEL,
+        max_tool_calls: int = MAX_TOOL_CALLS,
+    ) -> None:
+        self.client = client or anthropic.Anthropic()
+        self.model = model
+        self.max_tool_calls = max_tool_calls
+
+    def answer(self, question: str, on_progress: ProgressFn = None) -> AgentAnswer:
+        messages: list[dict] = [{"role": "user", "content": question}]
+        used_search = False
+        tool_calls = 0
+
+        while True:
+            force_final = tool_calls >= self.max_tool_calls
+            request: dict = {
+                "model": self.model,
+                "max_tokens": MAX_TOKENS,
+                "system": SYSTEM_PROMPT,
+                "tools": TOOLS,
+                "thinking": {"type": "adaptive"},
+                "messages": messages,
+            }
+            if force_final:
+                request["tool_choice"] = {"type": "none"}
+
+            response = self.client.messages.create(**request)
+            tool_uses = [b for b in response.content if b.type == "tool_use"]
+
+            if force_final or response.stop_reason != "tool_use" or not tool_uses:
+                text = _extract_text(response.content).strip()
+                return AgentAnswer(
+                    text=text,
+                    citations=_parse_citations(text),
+                    used_search=used_search,
+                    tool_calls=tool_calls,
+                )
+
+            messages.append({"role": "assistant", "content": response.content})
+            results = []
+            for tool_use in tool_uses:
+                used_search = True
+                tool_calls += 1
+                results.append(
+                    {
+                        "type": "tool_result",
+                        "tool_use_id": tool_use.id,
+                        "content": self._run_tool(tool_use, on_progress),
+                    }
+                )
+            messages.append({"role": "user", "content": results})
+
+    def _run_tool(self, tool_use, on_progress: ProgressFn) -> str:
+        name = tool_use.name
+        args = tool_use.input
+        try:
+            if name == SEARCH_TOOL:
+                query = args.get("query", "")
+                if on_progress:
+                    on_progress(f'Searching Wikipedia for "{query}"…')
+                return _format_search_results(query, search_wikipedia(query))
+            if name == FETCH_TOOL:
+                title = args.get("title", "")
+                section = args.get("section", "")
+                if on_progress:
+                    on_progress(f'Reading "{section}" from {title}…')
+                content = fetch_section(title, section)
+                if content is None:
+                    return f"No section matching '{section}' was found in '{title}'."
+                return (
+                    f"Section '{content.section}' of {content.title} "
+                    f"({content.url}):\n\n{content.text}"
+                )
+        except Exception as exc:  # surface failures to the model, don't crash the loop
+            return f"Tool '{name}' failed: {exc}. Try reformulating or another approach."
+        return f"Unknown tool: {name}"
