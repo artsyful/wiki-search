@@ -1,8 +1,17 @@
 # CLAUDE.md — Instructions for Claude Code
 
 ## Maintaining this file
-This file is process instructions for Claude Code — not a deliverable. Design decisions go in DESIGN.md, requirement changes in PRD.md, eval design in EVALS.md, setup/run instructions in README.md. Only record a gotcha
+This file is process instructions for Claude Code — not a deliverable. Only record a gotcha
 here if it changes how you should work in future sessions, and keep it to one line.
+
+## Project docs (all under `docs/`, except README.md at repo root)
+- `docs/PRD.md` — product requirements (what the system must do).
+- `docs/DESIGN.md` — agent / CLI / retrieval design decisions.
+- `docs/EVALS.md` — eval design (dimensions, rubrics, cases, reporting).
+- `docs/PROMPT_ITERATION.md` — prompt/grader/case iteration log.
+- `README.md` — reviewer entry point (setup / run / eval results).
+Put design decisions in `docs/DESIGN.md`, requirement changes in `docs/PRD.md`, eval design in
+`docs/EVALS.md`, setup/run instructions in `README.md`.
 
 ## README instructions
 The README.md is the reviewer's entry point — how to run and test the project. 
@@ -12,10 +21,10 @@ When to update it: A new setup/run/test command is established → record it. It
 3. **Run the CLI** — the 2-3 most useful invocations with real example questions
 4. **Run the evals** — command to run the full suite and what the output looks like
 5. **Results** — latest eval numbers (update these after every eval run)
-6. **Design** — one sentence + pointer to DESIGN.md / EVALS.md. 
+6. **Design** — one sentence + pointer to docs/DESIGN.md / docs/EVALS.md. 
 
 ## Prompt iteration log
-After any change to a system prompt, judge rubric, grader logic, or eval case expectations, append an entry to `PROMPT_ITERATION.md` at the time of the change — including changes that didn't help or that you reverted. Improving or expanding the eval suite itself counts as a change worth logging. Fill in **Result** after the next eval run; never leave it TBD at session end.
+After any change to a system prompt, judge rubric, grader logic, or eval case expectations, append an entry to `docs/PROMPT_ITERATION.md` at the time of the change — including changes that didn't help or that you reverted. Improving or expanding the eval suite itself counts as a change worth logging. Fill in **Result** after the next eval run; never leave it TBD at session end.
 
 ### <n>. <one-line summary of the fix> — `<file>`
 - **Failure:** <what the eval or author caught, with case ids where relevant>

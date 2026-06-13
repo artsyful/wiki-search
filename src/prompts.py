@@ -1,4 +1,4 @@
-"""System prompt, tool schemas, and shared identifiers (see PRD.md core behaviors)."""
+"""System prompt, tool schemas, and shared identifiers (see docs/PRD.md core behaviors)."""
 
 from __future__ import annotations
 

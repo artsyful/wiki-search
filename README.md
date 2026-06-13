@@ -50,7 +50,7 @@ browser — summary cards, per-dimension/category charts, per-case grades, and a
 | faithfulness / grounding | Opus judge | 1.69/2 · 92% pass |
 | behavior (special cases) | Opus judge | 1.76/2 · 94% pass |
 
-What the evals taught us (see `PROMPT_ITERATION.md`):
+What the evals taught us (see `docs/PROMPT_ITERATION.md`):
 - **Grounding discipline is the hard part.** Early on the agent supplemented answers with
   confident-but-ungrounded "famous" facts (e.g. the popular "1,665 steps" for the Eiffel Tower).
   A targeted prompt rule fixed this — the agent now stays grounded in retrieved text.
@@ -63,5 +63,6 @@ What the evals taught us (see `PROMPT_ITERATION.md`):
 
 ## Design
 Single-loop tool-using agent (Claude + `search_wikipedia` + `fetch_section` over the live
-MediaWiki API), wrapped in a `rich` CLI. See **[DESIGN.md](DESIGN.md)** for the agent/CLI design,
-**[PRD.md](PRD.md)** for product requirements, and **[EVALS.md](EVALS.md)** for the eval design.
+MediaWiki API), wrapped in a `rich` CLI. See **[docs/DESIGN.md](docs/DESIGN.md)** for the
+agent/CLI design, **[docs/PRD.md](docs/PRD.md)** for product requirements, and
+**[docs/EVALS.md](docs/EVALS.md)** for the eval design.

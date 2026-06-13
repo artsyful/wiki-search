@@ -1,4 +1,4 @@
-"""Curated, category-balanced eval cases (see EVALS.md → Case Set).
+"""Curated, category-balanced eval cases (see docs/EVALS.md → Case Set).
 
 Each case declares an *expected behavior*, not just a gold string:
 - `expected_searches`: 0 means the agent must NOT search; N ≥ 1 means at least N searches.
@@ -159,7 +159,11 @@ CASES: list[EvalCase] = [
             "sources; cite each."
         ),
         gold_facts=[],
-        notes="Multi-hop that aggregates (sums) data across several source articles.",
+        notes=(
+            "Multi-hop that aggregates (sums) data across several source articles. "
+            "TODO: populations change over time → reference is brittle; replace with a stable "
+            "aggregation fact (e.g. summing fixed quantities like areas or founding years)."
+        ),
     ),
     EvalCase(
         id="eiffel_tower_steps",

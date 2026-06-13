@@ -2,7 +2,7 @@
 
 `search_wikipedia` returns a lightweight overview (summary + section titles) for the
 top candidate articles; `fetch_section` drills into one section's full text. See
-DESIGN.md → Retrieval Integration.
+docs/DESIGN.md → Retrieval Integration.
 """
 
 from __future__ import annotations

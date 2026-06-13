@@ -1,6 +1,6 @@
 """The tool-use agent loop: Claude + two Wikipedia tools → a grounded AgentAnswer.
 
-See DESIGN.md → Agent Loop. The loop is manual (not the SDK tool runner) so we can
+See docs/DESIGN.md → Agent Loop. The loop is manual (not the SDK tool runner) so we can
 track whether search was used, count tool calls, cap multi-hop, and surface progress.
 """
 

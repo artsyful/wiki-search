@@ -1,4 +1,4 @@
-"""Code graders + Opus LLM-judge graders (see EVALS.md → Dimensions / Rubrics).
+"""Code graders + Opus LLM-judge graders (see docs/EVALS.md → Dimensions / Rubrics).
 
 All graders return a `GraderResult` on a uniform 0–2 scale so dimensions aggregate together
 (code graders are binary: pass→2, fail→0). `passed = score >= 1`. Inapplicable graders

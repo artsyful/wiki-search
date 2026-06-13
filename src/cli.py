@@ -1,4 +1,4 @@
-"""Interactive REPL for the Wikipedia-grounded agent (see DESIGN.md → CLI).
+"""Interactive REPL for the Wikipedia-grounded agent (see docs/DESIGN.md → CLI).
 
 Run:  python -m src.cli            # interactive Q&A session
       python -m src.cli --demo     # run a curated set of sample questions
