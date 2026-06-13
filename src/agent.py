@@ -7,7 +7,7 @@ track whether search was used, count tool calls, cap multi-hop, and surface prog
 from __future__ import annotations
 
 import re
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from typing import Callable
 
 import anthropic
@@ -35,6 +35,8 @@ class AgentAnswer:
     citations: list[Citation]
     used_search: bool
     tool_calls: int
+    searches: int = 0  # count of search_wikipedia calls (≠ tool_calls, which includes fetches)
+    retrieved_context: list[str] = field(default_factory=list)  # tool results the agent saw
 
 
 def _extract_text(content: list) -> str:
@@ -90,6 +92,8 @@ class WikiAgent:
         messages: list[dict] = [{"role": "user", "content": question}]
         used_search = False
         tool_calls = 0
+        searches = 0
+        retrieved: list[str] = []
 
         while True:
             force_final = tool_calls >= self.max_tool_calls
@@ -114,6 +118,8 @@ class WikiAgent:
                     citations=_parse_citations(text),
                     used_search=used_search,
                     tool_calls=tool_calls,
+                    searches=searches,
+                    retrieved_context=retrieved,
                 )
 
             messages.append({"role": "assistant", "content": response.content})
@@ -121,11 +127,15 @@ class WikiAgent:
             for tool_use in tool_uses:
                 used_search = True
                 tool_calls += 1
+                if tool_use.name == SEARCH_TOOL:
+                    searches += 1
+                content = self._run_tool(tool_use, on_progress)
+                retrieved.append(content)
                 results.append(
                     {
                         "type": "tool_result",
                         "tool_use_id": tool_use.id,
-                        "content": self._run_tool(tool_use, on_progress),
+                        "content": content,
                     }
                 )
             messages.append({"role": "user", "content": results})
