@@ -22,8 +22,9 @@ model is named in the writeup per the assignment constraint.
    - **Reformulation hop** — weak results → re-`search_wikipedia` with better terms.
    - **Aggregation hop** — search/fetch several articles, then combine (summarize or compute,
      e.g. arithmetic over retrieved facts).
-4. Cap tool calls per question (**max 8 turns**) to bound runaway loops while leaving room for
-   rare deep recursive search; on cap, answer with what is grounded or abstain.
+4. Cap tool calls per question (**max 5**) to bound runaway loops; on cap, answer with what is
+   grounded or abstain. If the final text is empty (e.g. retrieval kept failing), substitute a
+   clear "couldn't ground an answer" message so an empty string is never returned.
 5. Stop when Claude returns a final text answer.
 
 ## Tools (two-tool design)
@@ -51,7 +52,8 @@ weak.
   `prop=sections`, then pull that section's plain text (`action=parse&section=N` → strip markup,
   or `prop=extracts` scoped to the section). Returns a `SectionContent`.
 - One thin client module; no local index. Zero/empty results are returned cleanly so the agent
-  can reformulate or abstain.
+  can reformulate or abstain. All requests retry on HTTP 429 with exponential backoff (honoring
+  `Retry-After`), since Wikipedia throttles bursty traffic during eval runs.
 
 ## CLI (interactive, well-formatted)
 - REPL: launch once, prompt loop (`Ask a question ▷ `), `exit`/Ctrl-D to quit; `--demo` runs a
@@ -74,7 +76,8 @@ weak.
   - `SearchResult(title: str, summary: str, section_titles: list[str], url: str)`
   - `SectionContent(title: str, section: str, text: str, url: str)`
   - `Citation(title: str, url: str)`
-  - `AgentAnswer(text: str, citations: list[Citation], used_search: bool, tool_calls: int)`
+  - `AgentAnswer(text, citations, used_search, tool_calls, searches, retrieved_context)`
+    — `searches` (count of search calls) and `retrieved_context` (tool results seen) feed the evals.
 - Typed function signatures throughout; dicts only at the API I/O boundary.
 
 ### File structure

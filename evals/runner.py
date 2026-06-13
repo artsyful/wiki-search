@@ -20,7 +20,7 @@ from src.agent import WikiAgent
 from src.prompts import DEFAULT_MODEL
 
 from .cases import CASES
-from .graders import DIMENSIONS, JUDGE_MODEL, check_gold_facts, grade_case
+from .graders import DIMENSIONS, JUDGE_DIMENSIONS, JUDGE_MODEL, grade_case
 from .report import write_html, write_json
 
 RESULTS_DIR = "results"
@@ -30,44 +30,60 @@ def _mean(values: list[float]) -> float:
     return sum(values) / len(values) if values else 0.0
 
 
-def _pass_rate(values: list[float]) -> float:
-    return _mean([1.0 if v >= 1 else 0.0 for v in values])
-
-
-def _agg(scores: list[float], n_cases: int | None = None) -> dict:
-    out = {"mean": _mean(scores), "pass_rate": _pass_rate(scores), "n": len(scores)}
-    if n_cases is not None:
-        out["n_cases"] = n_cases
-    return out
-
-
 def _aggregate(cases: list[dict]) -> dict:
-    by_dim: dict[str, list[float]] = {d: [] for d in DIMENSIONS}
-    by_cat: dict[str, list[float]] = {}
-    overall: list[float] = []
+    """Code dimensions aggregate to a pass rate; judge dimensions add a mean (0–2)."""
+    dim_pass: dict[str, list[float]] = {d: [] for d in DIMENSIONS}
+    dim_score: dict[str, list[float]] = {d: [] for d in JUDGE_DIMENSIONS}
+    cat_pass: dict[str, list[float]] = {}
+    overall_pass: list[float] = []
+    judge_scores: list[float] = []
 
     for case in cases:
         cat = case["category"]
-        by_cat.setdefault(cat, [])
+        cat_pass.setdefault(cat, [])
         for dim in DIMENSIONS:
             grader = case["graders"][dim]
-            if grader["applicable"]:
-                by_dim[dim].append(grader["score"])
-                by_cat[cat].append(grader["score"])
-                overall.append(grader["score"])
+            if not grader["applicable"]:
+                continue
+            passed = 1.0 if grader["passed"] else 0.0
+            dim_pass[dim].append(passed)
+            cat_pass[cat].append(passed)
+            overall_pass.append(passed)
+            if grader["kind"] == "judge":
+                dim_score[dim].append(grader["score"])
+                judge_scores.append(grader["score"])
+
+    dims = {}
+    for dim in DIMENSIONS:
+        is_judge = dim in JUDGE_DIMENSIONS
+        entry = {
+            "kind": "judge" if is_judge else "code",
+            "pass_rate": _mean(dim_pass[dim]),
+            "n": len(dim_pass[dim]),
+        }
+        if is_judge:
+            entry["mean"] = _mean(dim_score[dim])
+        dims[dim] = entry
 
     return {
-        "dimensions": {d: _agg(s) for d, s in by_dim.items()},
-        "categories": {c: _agg(s) for c, s in by_cat.items()},
-        "overall": _agg(overall),
+        "dimensions": dims,
+        "categories": {c: {"pass_rate": _mean(v), "n": len(v)} for c, v in cat_pass.items()},
+        "overall": {
+            "pass_rate": _mean(overall_pass),
+            "n": len(overall_pass),
+            "judge_mean": _mean(judge_scores),
+            "judge_n": len(judge_scores),
+        },
     }
 
 
-def run(agent_model: str, limit: int | None) -> dict:
+def run(agent_model: str, limit: int | None, ids: list[str] | None) -> dict:
     console = Console()
     client = anthropic.Anthropic()
     agent = WikiAgent(client=client, model=agent_model)
-    cases = CASES[:limit] if limit else CASES
+    cases = [c for c in CASES if c.id in ids] if ids else CASES
+    if limit:
+        cases = cases[:limit]
 
     case_results: list[dict] = []
     for i, case in enumerate(cases, 1):
@@ -92,9 +108,9 @@ def run(agent_model: str, limit: int | None) -> dict:
                     "tool_calls": answer.tool_calls,
                     "searches": answer.searches,
                 },
-                "gold_facts_matched": check_gold_facts(case, answer),
                 "graders": {
                     d: {
+                        "kind": g.kind,
                         "applicable": g.applicable,
                         "score": g.score,
                         "passed": g.passed,
@@ -118,16 +134,23 @@ def run(agent_model: str, limit: int | None) -> dict:
 
 
 def _print_summary(console: Console, report: dict) -> None:
-    table = Table(title="Per-dimension results (mean 0–2 · pass rate at ≥ 1)")
+    table = Table(title="Results — code graders: pass rate · judges: mean 0–2 + pass rate (≥ 1)")
     table.add_column("dimension")
+    table.add_column("type")
     table.add_column("mean", justify="right")
     table.add_column("pass", justify="right")
     table.add_column("n", justify="right")
     for dim, agg in report["aggregates"]["dimensions"].items():
-        table.add_row(dim, f"{agg['mean']:.2f}", f"{agg['pass_rate'] * 100:.0f}%", str(agg["n"]))
+        mean = f"{agg['mean']:.2f}" if "mean" in agg else "—"
+        table.add_row(dim, agg["kind"], mean, f"{agg['pass_rate'] * 100:.0f}%", str(agg["n"]))
     overall = report["aggregates"]["overall"]
-    table.add_row("[bold]overall[/bold]", f"[bold]{overall['mean']:.2f}[/bold]",
-                  f"[bold]{overall['pass_rate'] * 100:.0f}%[/bold]", str(overall["n"]))
+    table.add_row(
+        "[bold]overall[/bold]",
+        "",
+        f"[bold]{overall['judge_mean']:.2f}[/bold]",
+        f"[bold]{overall['pass_rate'] * 100:.0f}%[/bold]",
+        str(overall["n"]),
+    )
     console.print(table)
 
 
@@ -135,6 +158,7 @@ def main() -> None:
     load_dotenv()
     parser = argparse.ArgumentParser(description="Run the Wikipedia agent eval suite.")
     parser.add_argument("--limit", type=int, default=None, help="Run only the first N cases.")
+    parser.add_argument("--ids", default=None, help="Comma-separated case ids to run (subset).")
     parser.add_argument("--model", default=DEFAULT_MODEL, help="Agent model id.")
     args = parser.parse_args()
 
@@ -143,7 +167,8 @@ def main() -> None:
         console.print("[red]ANTHROPIC_API_KEY is not set.[/red] Copy .env.example to .env or export it.")
         sys.exit(1)
 
-    report = run(args.model, args.limit)
+    ids = [s.strip() for s in args.ids.split(",")] if args.ids else None
+    report = run(args.model, args.limit, ids)
 
     os.makedirs(RESULTS_DIR, exist_ok=True)
     stamp = datetime.now().strftime("%Y%m%d-%H%M%S")

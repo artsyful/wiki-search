@@ -14,6 +14,7 @@ from dataclasses import dataclass
 import anthropic
 
 from src.agent import AgentAnswer
+from src.wiki_client import url_exists
 
 from .cases import FACTUAL_ANSWER_CATEGORIES, EvalCase
 
@@ -21,19 +22,23 @@ JUDGE_MODEL = "claude-opus-4-8"  # deliberately stronger than the Sonnet 4.6 age
 
 # Dimension identifiers.
 SEARCH_BEHAVIOR = "search_behavior"
+ACCURACY = "accuracy"
 CORRECTNESS = "correctness"
 FAITHFULNESS = "faithfulness"
 BEHAVIOR = "behavior"
 CITATIONS = "citations"
 
-DIMENSIONS = [SEARCH_BEHAVIOR, CORRECTNESS, FAITHFULNESS, BEHAVIOR, CITATIONS]
+CODE_DIMENSIONS = [SEARCH_BEHAVIOR, ACCURACY, CITATIONS]  # binary pass/fail (or n/a)
+JUDGE_DIMENSIONS = [CORRECTNESS, FAITHFULNESS, BEHAVIOR]  # 0–2 rubric score
+DIMENSIONS = CODE_DIMENSIONS + JUDGE_DIMENSIONS
 
 DIMENSION_DESCRIPTIONS = {
-    SEARCH_BEHAVIOR: "Code: actual searches vs expected_searches (0 → must not search; N → ≥ N).",
-    CORRECTNESS: "Opus judge: answer vs reference_answer — Correct / Partial / Incorrect.",
-    FAITHFULNESS: "Opus judge: every claim supported by retrieved text — Grounded / Minor gap / Unsupported.",
-    BEHAVIOR: "Opus judge: special-case handling vs expected_behavior — Ideal / Acceptable / Poor.",
-    CITATIONS: "Code: when search was used, ≥ 1 well-formed Title — URL citation is present.",
+    SEARCH_BEHAVIOR: "Code (pass/fail): actual searches vs expected_searches (0 → must not search; N → ≥ N).",
+    ACCURACY: "Code (pass/fail): do all of the case's gold_facts appear in the answer? (cheap keyword check, no LLM).",
+    CITATIONS: "Code (pass/fail): when search was used, ≥ 1 citation present and every cited URL resolves (HTTP 200).",
+    CORRECTNESS: "Opus judge (0–2): answer vs reference_answer — Correct / Partial / Incorrect.",
+    FAITHFULNESS: "Opus judge (0–2): every claim supported by retrieved text — Grounded / Minor gap / Unsupported.",
+    BEHAVIOR: "Opus judge (0–2): special-case handling vs expected_behavior — Ideal / Acceptable / Poor.",
 }
 
 _JUDGE_SCHEMA = {
@@ -50,18 +55,23 @@ _JUDGE_SCHEMA = {
 @dataclass
 class GraderResult:
     dimension: str
+    kind: str  # "code" (pass/fail) or "judge" (0–2)
     applicable: bool
-    score: float | None  # 0–2 when applicable, else None
-    passed: bool | None  # score >= 1 when applicable, else None
+    passed: bool | None
+    score: float | None  # judges only (0–2); None for code graders
     rationale: str
 
 
-def _result(dimension: str, score: int, rationale: str) -> GraderResult:
-    return GraderResult(dimension, True, float(score), score >= 1, rationale)
+def _code(dimension: str, passed: bool, rationale: str) -> GraderResult:
+    return GraderResult(dimension, "code", True, passed, None, rationale)
 
 
-def _na(dimension: str, why: str) -> GraderResult:
-    return GraderResult(dimension, False, None, None, why)
+def _judge_result(dimension: str, score: int, rationale: str) -> GraderResult:
+    return GraderResult(dimension, "judge", True, score >= 1, float(score), rationale)
+
+
+def _na(dimension: str, kind: str, why: str) -> GraderResult:
+    return GraderResult(dimension, kind, False, None, None, why)
 
 
 # --------------------------------------------------------------------------- code graders
@@ -80,24 +90,35 @@ def grade_search_behavior(case: EvalCase, answer: AgentAnswer) -> GraderResult:
     else:
         ok = actual >= expected
         rationale = f"Expected ≥ {expected} search(es); agent ran {actual}."
-    return _result(SEARCH_BEHAVIOR, 2 if ok else 0, rationale)
+    return _code(SEARCH_BEHAVIOR, ok, rationale)
+
+
+def grade_accuracy(case: EvalCase, answer: AgentAnswer) -> GraderResult:
+    """Cheap deterministic correctness signal: are all gold_facts present in the answer?"""
+    if not case.gold_facts:
+        return _na(ACCURACY, "code", "No gold facts defined for a keyword check.")
+    text = answer.text.lower()
+    missing = [fact for fact in case.gold_facts if fact.lower() not in text]
+    if missing:
+        return _code(ACCURACY, False, f"Missing expected fact(s): {', '.join(missing)}.")
+    return _code(ACCURACY, True, f"All {len(case.gold_facts)} expected fact(s) present.")
 
 
 def grade_citations(case: EvalCase, answer: AgentAnswer) -> GraderResult:
     if not answer.used_search:
-        return _na(CITATIONS, "No search performed; citations not required.")
+        return _na(CITATIONS, "code", "No search performed; citations not required.")
     well_formed = [c for c in answer.citations if c.title and c.url.startswith("http")]
-    if well_formed:
-        return _result(CITATIONS, 2, f"{len(well_formed)} well-formed citation(s) present.")
-    return _result(CITATIONS, 0, "Search was used but no well-formed Title — URL citation found.")
-
-
-def check_gold_facts(case: EvalCase, answer: AgentAnswer) -> bool | None:
-    """Cheap deterministic correctness pre-check; informational (not a graded dimension)."""
-    if not case.gold_facts:
-        return None
-    text = answer.text.lower()
-    return all(fact.lower() in text for fact in case.gold_facts)
+    if not well_formed:
+        return _code(CITATIONS, False, "Search was used but no well-formed Title — URL citation found.")
+    dead = [c.url for c in well_formed if not url_exists(c.url)]
+    if dead:
+        return _code(
+            CITATIONS,
+            False,
+            f"{len(well_formed)} citation(s) present but {len(dead)} URL(s) did not resolve: "
+            + ", ".join(dead),
+        )
+    return _code(CITATIONS, True, f"{len(well_formed)} citation(s) present; all URLs resolve.")
 
 
 # --------------------------------------------------------------------------- LLM judges
@@ -140,19 +161,19 @@ Return JSON {score, rationale}."""
 
 def judge_correctness(client: anthropic.Anthropic, case: EvalCase, answer: AgentAnswer) -> GraderResult:
     if case.category not in FACTUAL_ANSWER_CATEGORIES:
-        return _na(CORRECTNESS, "Non-factual / abstention case; correctness carried by Behavior.")
+        return _na(CORRECTNESS, "judge", "Non-factual / abstention case; correctness carried by Behavior.")
     user = (
         f"Question: {case.question}\n\n"
         f"Reference answer: {case.reference_answer}\n\n"
         f"Agent answer:\n{answer.text}"
     )
     score, rationale = _run_judge(client, _CORRECTNESS_SYSTEM, user)
-    return _result(CORRECTNESS, score, rationale)
+    return _judge_result(CORRECTNESS, score, rationale)
 
 
 def judge_faithfulness(client: anthropic.Anthropic, case: EvalCase, answer: AgentAnswer) -> GraderResult:
     if not answer.used_search or not answer.retrieved_context:
-        return _na(FAITHFULNESS, "No Wikipedia text retrieved; grounding not applicable.")
+        return _na(FAITHFULNESS, "judge", "No Wikipedia text retrieved; grounding not applicable.")
     sources = "\n\n---\n\n".join(answer.retrieved_context)
     user = (
         f"Question: {case.question}\n\n"
@@ -160,7 +181,7 @@ def judge_faithfulness(client: anthropic.Anthropic, case: EvalCase, answer: Agen
         f"Retrieved Wikipedia text the agent saw:\n{sources}"
     )
     score, rationale = _run_judge(client, _FAITHFULNESS_SYSTEM, user)
-    return _result(FAITHFULNESS, score, rationale)
+    return _judge_result(FAITHFULNESS, score, rationale)
 
 
 def judge_behavior(client: anthropic.Anthropic, case: EvalCase, answer: AgentAnswer) -> GraderResult:
@@ -170,7 +191,7 @@ def judge_behavior(client: anthropic.Anthropic, case: EvalCase, answer: AgentAns
         f"Agent answer:\n{answer.text}"
     )
     score, rationale = _run_judge(client, _BEHAVIOR_SYSTEM, user)
-    return _result(BEHAVIOR, score, rationale)
+    return _judge_result(BEHAVIOR, score, rationale)
 
 
 def grade_case(
@@ -179,6 +200,7 @@ def grade_case(
     """Run all five graders for one case."""
     return {
         SEARCH_BEHAVIOR: grade_search_behavior(case, answer),
+        ACCURACY: grade_accuracy(case, answer),
         CITATIONS: grade_citations(case, answer),
         CORRECTNESS: judge_correctness(client, case, answer),
         FAITHFULNESS: judge_faithfulness(client, case, answer),

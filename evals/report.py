@@ -23,47 +23,59 @@ def _esc(value: object) -> str:
     return html.escape(str(value))
 
 
-def _bar(mean: float | None, pass_rate: float | None, n: int) -> str:
-    if mean is None:
-        return '<span class="na">n/a</span>'
-    pct = mean / 2 * 100
+def _bar(pass_rate: float, n: int, mean: float | None = None) -> str:
+    pct = pass_rate * 100
+    prefix = f"{mean:.2f}/2 · " if mean is not None else ""
     return (
         f'<div class="bar-wrap"><div class="bar" style="width:{pct:.0f}%"></div></div>'
-        f'<span class="bar-label">{mean:.2f}/2 · {pass_rate * 100:.0f}% pass · n={n}</span>'
+        f'<span class="bar-label">{prefix}{pct:.0f}% pass · n={n}</span>'
     )
 
 
 def _score_badge(grader: dict) -> str:
     if not grader["applicable"]:
         return '<span class="badge na">n/a</span>'
+    if grader["kind"] == "code":
+        cls = "good" if grader["passed"] else "bad"
+        return f'<span class="badge {cls}">{"pass" if grader["passed"] else "fail"}</span>'
     score = int(grader["score"])
     cls = {2: "good", 1: "mid", 0: "bad"}[score]
     return f'<span class="badge {cls}">{score}</span>'
 
 
-def _summary_cards(report: dict) -> str:
-    cards = []
-    overall = report["aggregates"]["overall"]
-    cards.append(
-        '<div class="card"><div class="card-title">Overall</div>'
-        f'<div class="card-num">{overall["mean"]:.2f}<span>/2</span></div>'
-        f'<div class="card-sub">{overall["pass_rate"] * 100:.0f}% pass · {overall["n"]} grades</div></div>'
+def _card(title: str, num: str, sub: str) -> str:
+    return (
+        f'<div class="card"><div class="card-title">{_esc(title)}</div>'
+        f'<div class="card-num">{num}</div><div class="card-sub">{sub}</div></div>'
     )
-    for dim, agg in report["aggregates"]["dimensions"].items():
-        cards.append(
-            f'<div class="card"><div class="card-title">{_esc(dim)}</div>'
-            f'<div class="card-num">{agg["mean"]:.2f}<span>/2</span></div>'
-            f'<div class="card-sub">{agg["pass_rate"] * 100:.0f}% pass · n={agg["n"]}</div></div>'
+
+
+def _summary_cards(report: dict) -> str:
+    overall = report["aggregates"]["overall"]
+    cards = [
+        _card(
+            "Overall",
+            f"{overall['pass_rate'] * 100:.0f}<span>%</span>",
+            f"pass · judge mean {overall['judge_mean']:.2f}/2 · {overall['n']} grades",
         )
+    ]
+    for dim, agg in report["aggregates"]["dimensions"].items():
+        if "mean" in agg:
+            num = f"{agg['mean']:.2f}<span>/2</span>"
+            sub = f"{agg['pass_rate'] * 100:.0f}% pass · n={agg['n']}"
+        else:
+            num = f"{agg['pass_rate'] * 100:.0f}<span>%</span>"
+            sub = f"pass · n={agg['n']}"
+        cards.append(_card(dim, num, sub))
     return '<div class="cards">' + "".join(cards) + "</div>"
 
 
 def _chart(title: str, rows: dict) -> str:
     items = []
     for name, agg in rows.items():
+        bar = _bar(agg["pass_rate"], agg["n"], agg.get("mean"))
         items.append(
-            f'<tr><td class="chart-name">{_esc(name)}</td>'
-            f'<td class="chart-bar">{_bar(agg["mean"], agg["pass_rate"], agg["n"])}</td></tr>'
+            f'<tr><td class="chart-name">{_esc(name)}</td><td class="chart-bar">{bar}</td></tr>'
         )
     return f'<h3>{_esc(title)}</h3><table class="chart">{"".join(items)}</table>'
 
@@ -75,8 +87,6 @@ def _case_rows(report: dict) -> str:
     for case in report["cases"]:
         graders = case["graders"]
         cells = "".join(f"<td>{_score_badge(graders[d])}</td>" for d in DIMENSIONS)
-        gold = case["gold_facts_matched"]
-        gold_txt = "—" if gold is None else ("✓" if gold else "✗")
         rationales = "<br>".join(
             f"<b>{_esc(d)}:</b> {_esc(graders[d]['rationale'])}" for d in DIMENSIONS
         )
@@ -85,15 +95,14 @@ def _case_rows(report: dict) -> str:
             f'<td>{_esc(case["category"])}</td>'
             f'<td class="q">{_esc(case["question"])}</td>'
             f"{cells}"
-            f'<td>{case["answer"]["searches"]}</td>'
-            f"<td>{gold_txt}</td></tr>"
+            f'<td>{case["answer"]["searches"]}</td></tr>'
             f'<tr class="case-detail"><td colspan="{4 + len(DIMENSIONS)}">'
             f'<div class="rationale">{rationales}</div></td></tr>'
         )
     header_dims = "".join(f"<th>{_esc(d)}</th>" for d in DIMENSIONS)
     return (
         '<table class="cases"><thead><tr><th>id</th><th>category</th><th>question</th>'
-        f"{header_dims}<th>searches</th><th>gold</th></tr></thead><tbody>"
+        f"{header_dims}<th>searches</th></tr></thead><tbody>"
         + "".join(rows)
         + "</tbody></table>"
     )

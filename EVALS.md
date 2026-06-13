@@ -8,14 +8,16 @@ an **expected behavior**, not just a gold string.
 | Dimension | Grader | How |
 |---|---|---|
 | **Search behavior** | **Code** | Compare actual searches to the case's `expected_searches`: `0` → must not search; `N ≥ 1` → at least N searches (multi-hop ≥ 2). |
-| **Correctness** | **LLM judge** (rubric) | Score the answer against the case's `reference_answer`. Optional cheap code pre-check on `gold_facts` (substring) for crisp numeric facts. |
+| **Accuracy** | **Code** | Do all of the case's `gold_facts` appear in the answer? A cheap, LLM-free correctness signal that can run on every iteration without Opus. N/A when a case has no `gold_facts`. |
+| **Correctness** | **LLM judge** (rubric) | Score the answer against the case's `reference_answer` — the semantic check that goes beyond keyword matching. |
 | **Faithfulness / grounding** | **LLM judge** (rubric) | Is every factual claim supported by the **retrieved** Wikipedia text? Subsumes "do the cited articles support the claim." |
 | **Behavior** | **LLM judge** (rubric) | Does the answer handle the case's special requirement — abstain honestly, label non-Wikipedia answers, disambiguate, correct false premises — per `expected_behavior`? |
-| **Citations** | **Code** | When search was used, assert ≥ 1 well-formed `Title — URL` citation is present. |
+| **Citations** | **Code** | When search was used, assert ≥ 1 well-formed `Title — URL` citation **and that every cited URL resolves** (HTTP 200) — presence alone is not enough. |
 
-Two grader families: **code/deterministic** (cheap, exact — search counts, key-fact substrings,
-citation presence) and **LLM judge** (rubric-scored — correctness, faithfulness, behavior). Each
-judge returns a 3-tier score (0–2) **plus a short rationale** for the report.
+Two grader families: **code/deterministic** (cheap, exact, no LLM — search counts, gold-fact
+accuracy, citation presence + URL liveness) and **LLM judge** (rubric-scored — correctness,
+faithfulness, behavior). Code graders are mandatory and run every time; the Opus judges are the
+expensive layer. Each judge returns a 3-tier score (0–2) **plus a short rationale** for the report.
 
 Dropped from the earlier draft: the standalone **Abstention** grader (folded into
 `expected_searches = 0` + the Behavior judge) and **Conciseness** (hard to validate; some answers
@@ -72,8 +74,9 @@ Each case is an `@dataclass`:
 ## Runner
 Iterate cases → run the agent, capturing the `AgentAnswer`, the **search count**, and the
 **retrieved Wikipedia text** (tool results, fed to the Faithfulness judge) → apply code graders,
-then LLM-judge graders → aggregate **per-dimension** and **per-category** (mean score 0–2 + pass
-rate at score ≥ 1) → print a console summary table. Latest numbers are recorded in the README per
+then LLM-judge graders → aggregate **per-dimension** and **per-category**: code dimensions report
+a **pass rate**, judge dimensions report a **mean (0–2) + pass rate** (score ≥ 1) → print a
+console summary table. Latest numbers are recorded in the README per
 CLAUDE.md after every run.
 
 ## Reporting (two artifacts every run)

@@ -112,9 +112,16 @@ CASES: list[EvalCase] = [
         question="How many steps lead to the top of the Eiffel Tower?",
         category=DEEP_SECTION,
         expected_searches=1,
-        reference_answer="There are 1,665 steps from the ground to the top of the Eiffel Tower.",
-        expected_behavior="Search, then fetch the relevant section for the step count; cite it.",
-        gold_facts=["1,665"],
+        reference_answer=(
+            "About 600 steps reach the second floor; historically a 1,710-step climb led to the "
+            "top (the top is normally reached by lift)."
+        ),
+        expected_behavior=(
+            "Search, then fetch the relevant section; report the step counts Wikipedia gives "
+            "(~600 to the second floor, ~1,710 to the top historically) and cite."
+        ),
+        gold_facts=["1,710"],
+        notes="Corrected from an earlier wrong gold fact (1,665 is not in the article).",
     ),
     EvalCase(
         id="mercury_ambiguous",

@@ -15,8 +15,12 @@ import anthropic
 from .prompts import DEFAULT_MODEL, FETCH_TOOL, SEARCH_TOOL, SYSTEM_PROMPT, TOOLS
 from .wiki_client import fetch_section, search_wikipedia
 
-MAX_TOOL_CALLS = 8
+MAX_TOOL_CALLS = 5
 MAX_TOKENS = 8000
+_EMPTY_FALLBACK = (
+    "I couldn't produce a grounded answer — repeated Wikipedia retrieval errors prevented me "
+    "from confirming this. I'm not able to find it in Wikipedia right now."
+)
 
 ProgressFn = Callable[[str], None] | None
 
@@ -51,7 +55,11 @@ def _parse_citations(text: str) -> list[Citation]:
         match = _URL_RE.search(line)
         if not match:
             continue
-        url = match.group(0).rstrip(").,;]")
+        url = match.group(0).rstrip(".,;]'\"")
+        # Keep a trailing ')' that belongs to a disambiguation slug like Mercury_(planet);
+        # only strip it when it's unbalanced (e.g. wrapping punctuation: "(see http://x)").
+        if url.endswith(")") and url.count("(") < url.count(")"):
+            url = url[:-1]
         if url in seen:
             continue
         seen.add(url)
@@ -112,7 +120,7 @@ class WikiAgent:
             tool_uses = [b for b in response.content if b.type == "tool_use"]
 
             if force_final or response.stop_reason != "tool_use" or not tool_uses:
-                text = _extract_text(response.content).strip()
+                text = _extract_text(response.content).strip() or _EMPTY_FALLBACK
                 return AgentAnswer(
                     text=text,
                     citations=_parse_citations(text),

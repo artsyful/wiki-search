@@ -8,6 +8,7 @@ DESIGN.md → Retrieval Integration.
 from __future__ import annotations
 
 import re
+import time
 from dataclasses import dataclass
 from html.parser import HTMLParser
 from urllib.parse import quote
@@ -21,6 +22,8 @@ SEARCH_LIMIT = 5
 TOP_K_ARTICLES = 3
 HTTP_TIMEOUT = 15
 MAX_SECTION_CHARS = 6000
+MAX_RETRIES = 4  # retry on HTTP 429 (rate limit) with exponential backoff
+BACKOFF_BASE = 1.0
 
 # Boilerplate sections that never help answer a question; hidden from the agent.
 SKIP_SECTIONS = {
@@ -59,14 +62,37 @@ _session = requests.Session()
 _session.headers.update({"User-Agent": USER_AGENT})
 
 
+def _request(method: str, url: str, **kwargs: object) -> requests.Response:
+    """Issue a request, retrying on HTTP 429 with backoff (honoring Retry-After)."""
+    resp = None
+    for attempt in range(MAX_RETRIES):
+        resp = _session.request(method, url, timeout=HTTP_TIMEOUT, **kwargs)
+        if resp.status_code != 429 or attempt == MAX_RETRIES - 1:
+            return resp
+        wait = float(resp.headers.get("Retry-After", BACKOFF_BASE * (2**attempt)))
+        time.sleep(wait)
+    return resp  # type: ignore[return-value]
+
+
 def _get(params: dict[str, object]) -> dict:
-    resp = _session.get(WIKIPEDIA_API, params={**params, "format": "json"}, timeout=HTTP_TIMEOUT)
+    resp = _request("GET", WIKIPEDIA_API, params={**params, "format": "json"})
     resp.raise_for_status()
     return resp.json()
 
 
 def _url_for(title: str) -> str:
     return "https://en.wikipedia.org/wiki/" + quote(title.replace(" ", "_"))
+
+
+def url_exists(url: str) -> bool:
+    """True if `url` resolves to a live page (HTTP 200). Used to validate citations."""
+    try:
+        resp = _request("HEAD", url, allow_redirects=True)
+        if resp.status_code == 405:  # some endpoints reject HEAD; fall back to GET
+            resp = _request("GET", url, allow_redirects=True)
+        return resp.status_code == 200
+    except requests.RequestException:
+        return False
 
 
 class _TextExtractor(HTMLParser):
