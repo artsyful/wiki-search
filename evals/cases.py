@@ -20,6 +20,8 @@ FALSE_PREMISE = "false_premise"
 NON_FACTUAL = "non_factual"
 UNANSWERABLE = "unanswerable"
 INSUFFICIENT = "found_but_insufficient"
+TEMPORAL_RECENT = "temporal_recent"
+TEMPORAL_PAST = "temporal_past"
 
 # Categories for which the Correctness judge applies (a real answer is expected).
 FACTUAL_ANSWER_CATEGORIES = {
@@ -29,6 +31,7 @@ FACTUAL_ANSWER_CATEGORIES = {
     AMBIGUOUS,
     FALSE_PREMISE,
     INSUFFICIENT,
+    TEMPORAL_PAST,
 }
 
 CATEGORY_DESCRIPTIONS = {
@@ -40,6 +43,8 @@ CATEGORY_DESCRIPTIONS = {
     NON_FACTUAL: "Arithmetic / translation / reasoning; answer directly, label as not-from-Wikipedia.",
     UNANSWERABLE: "Private or unknowable; abstain honestly without fabricating.",
     INSUFFICIENT: "Wikipedia covers the topic but lacks the precise fact; answer the part it has and flag the gap.",
+    TEMPORAL_RECENT: "Very recent / post-training-cutoff event; ground in Wikipedia or abstain — never answer from memory.",
+    TEMPORAL_PAST: "A fixed historical fact that cannot change; retrieve and cite.",
 }
 
 
@@ -66,13 +71,26 @@ CASES: list[EvalCase] = [
         gold_facts=["8,848"],
     ),
     EvalCase(
-        id="speed_of_light",
-        question="What is the speed of light in a vacuum?",
-        category=SINGLE_HOP,
+        id="berlin_wall_fall_date",
+        question="On what date did the Berlin Wall fall?",
+        category=TEMPORAL_PAST,
         expected_searches=1,
-        reference_answer="Exactly 299,792,458 metres per second.",
-        expected_behavior="Answer with the value and cite a relevant Wikipedia article.",
-        gold_facts=["299,792,458"],
+        reference_answer="The Berlin Wall fell on 9 November 1989.",
+        expected_behavior="Answer with the date and cite the article.",
+        gold_facts=["1989"],
+    ),
+    EvalCase(
+        id="hormuz_blocked_2026",
+        question="When was the Strait of Hormuz blocked in 2026?",
+        category=TEMPORAL_RECENT,
+        expected_searches=1,
+        reference_answer="",
+        expected_behavior=(
+            "Search Wikipedia. If there is no clear record of such an event, say it isn't found "
+            "in Wikipedia rather than inventing a date or answering from prior knowledge; if "
+            "Wikipedia does cover it, report what it says with a citation."
+        ),
+        notes="Post-training-cutoff temporal probe; tests grounding/abstention over hallucination.",
     ),
     EvalCase(
         id="mona_lisa_painter",
@@ -84,16 +102,22 @@ CASES: list[EvalCase] = [
         gold_facts=["Leonardo"],
     ),
     EvalCase(
-        id="bladerunner_author_birth",
-        question="The film Blade Runner is based on a novel — who wrote it, and in what year was that author born?",
+        id="bladerunner_author_birthplace_population",
+        question=(
+            "The film Blade Runner is based on a novel. Who wrote it, in which city was that "
+            "author born, and what is that city's population?"
+        ),
         category=MULTI_HOP,
-        expected_searches=2,
+        expected_searches=3,
         reference_answer=(
             "Blade Runner is based on Philip K. Dick's novel 'Do Androids Dream of Electric "
-            "Sheep?'; Dick was born in 1928."
+            "Sheep?'; Dick was born in Chicago, whose population is roughly 2.7 million."
         ),
-        expected_behavior="Chain searches (film → source novel/author → birth year) and cite sources.",
-        gold_facts=["Philip K. Dick", "1928"],
+        expected_behavior=(
+            "Chain three lookups (film → author → birthplace → that city's population) and cite "
+            "sources."
+        ),
+        gold_facts=["Philip K. Dick", "Chicago"],
     ),
     EvalCase(
         id="wc2018_capital_population",
@@ -106,6 +130,36 @@ CASES: list[EvalCase] = [
         ),
         expected_behavior="Chain searches (winner → capital → population) and cite sources.",
         gold_facts=["Paris"],
+    ),
+    EvalCase(
+        id="everest_minus_k2_height",
+        question="How much taller is Mount Everest than K2, in metres?",
+        category=MULTI_HOP,
+        expected_searches=2,
+        reference_answer=(
+            "Everest is about 8,849 m and K2 about 8,611 m, so Everest is roughly 238 m taller."
+        ),
+        expected_behavior=(
+            "Retrieve both mountains' heights and compute the difference, grounded in the two "
+            "figures; cite both."
+        ),
+        gold_facts=["K2"],
+        notes="Multi-hop with an arithmetic operation (subtraction) on the retrieved facts.",
+    ),
+    EvalCase(
+        id="baltic_states_total_population",
+        question="What is the combined population of the three Baltic states?",
+        category=MULTI_HOP,
+        expected_searches=3,
+        reference_answer=(
+            "Estonia (~1.3M), Latvia (~1.8M), and Lithuania (~2.8M) total roughly 5.9 million."
+        ),
+        expected_behavior=(
+            "Retrieve each country's population from its article and sum them, grounded in the "
+            "sources; cite each."
+        ),
+        gold_facts=[],
+        notes="Multi-hop that aggregates (sums) data across several source articles.",
     ),
     EvalCase(
         id="eiffel_tower_steps",
@@ -202,5 +256,20 @@ CASES: list[EvalCase] = [
             "Report what Wikipedia says (his final words are unknown/unrecorded) — answer the "
             "known part and explicitly flag that the exact words are not available."
         ),
+    ),
+    EvalCase(
+        id="pushpavanam_village_avg_age",
+        question="Tell me more about Pushpavanam village and tell me the average age of people in it.",
+        category=INSUFFICIENT,
+        expected_searches=1,
+        reference_answer=(
+            "Pushpavanam is a village in Tamil Nadu, India; Wikipedia describes the village but "
+            "does not give the average age of its residents."
+        ),
+        expected_behavior=(
+            "Share what Wikipedia has about the village, and explicitly state that the average "
+            "age of residents is not available in Wikipedia — do not fabricate a figure."
+        ),
+        notes="Part answerable (village description), part not (average age).",
     ),
 ]
