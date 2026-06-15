@@ -1,0 +1,1258 @@
+{
+  "meta": {
+    "timestamp": "2026-06-15 03:23:20",
+    "agent_model": "claude-sonnet-4-6",
+    "judge_model": "claude-opus-4-8",
+    "n_cases": 17
+  },
+  "aggregates": {
+    "dimensions": {
+      "search_behavior": {
+        "kind": "code",
+        "pass_rate": 1.0,
+        "n": 17
+      },
+      "accuracy": {
+        "kind": "code",
+        "pass_rate": 0.8571428571428571,
+        "n": 14
+      },
+      "citations": {
+        "kind": "code",
+        "pass_rate": 0.9230769230769231,
+        "n": 13
+      },
+      "correctness": {
+        "kind": "judge",
+        "pass_rate": 0.9166666666666666,
+        "n": 12,
+        "mean": 1.75
+      },
+      "faithfulness": {
+        "kind": "judge",
+        "pass_rate": 0.9230769230769231,
+        "n": 13,
+        "mean": 1.7692307692307692
+      },
+      "behavior": {
+        "kind": "judge",
+        "pass_rate": 0.8823529411764706,
+        "n": 17,
+        "mean": 1.7058823529411764
+      }
+    },
+    "categories": {
+      "single_hop_factual": {
+        "pass_rate": 1.0,
+        "n": 12
+      },
+      "temporal_past": {
+        "pass_rate": 1.0,
+        "n": 6
+      },
+      "temporal_recent": {
+        "pass_rate": 0.75,
+        "n": 4
+      },
+      "multi_hop_factual": {
+        "pass_rate": 0.8333333333333334,
+        "n": 24
+      },
+      "deep_section_factual": {
+        "pass_rate": 0.8333333333333334,
+        "n": 6
+      },
+      "ambiguous_entity": {
+        "pass_rate": 1.0,
+        "n": 6
+      },
+      "false_premise": {
+        "pass_rate": 1.0,
+        "n": 6
+      },
+      "non_factual": {
+        "pass_rate": 1.0,
+        "n": 8
+      },
+      "unanswerable": {
+        "pass_rate": 1.0,
+        "n": 2
+      },
+      "found_but_insufficient": {
+        "pass_rate": 0.9166666666666666,
+        "n": 12
+      }
+    },
+    "overall": {
+      "pass_rate": 0.9186046511627907,
+      "n": 86,
+      "judge_mean": 1.7380952380952381,
+      "judge_n": 42
+    }
+  },
+  "cases": [
+    {
+      "id": "everest_height",
+      "question": "How tall is Mount Everest?",
+      "category": "single_hop_factual",
+      "expected_searches": 1,
+      "reference_answer": "About 8,848.86 metres (29,031 ft) above sea level, per the 2020 survey.",
+      "expected_behavior": "Answer directly with the height and cite the Mount Everest article.",
+      "gold_facts": [
+        "8,848"
+      ],
+      "notes": "",
+      "answer": {
+        "text": "Mount Everest stands at 8,848.86 meters (29,031 feet 8.5 inches) above sea level. This measurement comes from a joint survey conducted in 2020 by Nepalese and Chinese authorities and is the most recently recognized official height. Mount Everest is the highest mountain on Earth above sea level, located in the Mahalangur Himal sub-range of the Himalayas on the border between China and Nepal.\n\nSources:\nMount Everest - https://en.wikipedia.org/wiki/Mount_Everest",
+        "citations": [
+          {
+            "title": "Mount Everest",
+            "url": "https://en.wikipedia.org/wiki/Mount_Everest"
+          }
+        ],
+        "used_search": true,
+        "tool_calls": 1,
+        "searches": 1
+      },
+      "graders": {
+        "search_behavior": {
+          "kind": "code",
+          "applicable": true,
+          "score": null,
+          "passed": true,
+          "rationale": "Expected ≥ 1 search(es); agent ran 1."
+        },
+        "accuracy": {
+          "kind": "code",
+          "applicable": true,
+          "score": null,
+          "passed": true,
+          "rationale": "All 1 expected fact(s) present."
+        },
+        "citations": {
+          "kind": "code",
+          "applicable": true,
+          "score": null,
+          "passed": true,
+          "rationale": "1 citation(s) present; all URLs resolve."
+        },
+        "correctness": {
+          "kind": "judge",
+          "applicable": true,
+          "score": 2.0,
+          "passed": true,
+          "rationale": "States 8,848.86 metres (29,031 ft) per the 2020 survey, matching the reference exactly with accurate additional context."
+        },
+        "faithfulness": {
+          "kind": "judge",
+          "applicable": true,
+          "score": 2.0,
+          "passed": true,
+          "rationale": "All claims—the height of 8,848.86 m (29,031 ft 8.5 in), the 2020 joint Nepalese-Chinese survey, being the highest mountain above sea level, and its location in the Mahalangur Himal on the China-Nepal border—are directly supported by the retrieved Mount Everest text."
+        },
+        "behavior": {
+          "kind": "judge",
+          "applicable": true,
+          "score": 2.0,
+          "passed": true,
+          "rationale": "The answer provides the height confidently and accurately (8,848.86 m), includes useful context, and cites the Mount Everest article as expected."
+        }
+      }
+    },
+    {
+      "id": "berlin_wall_fall_date",
+      "question": "On what date did the Berlin Wall fall?",
+      "category": "temporal_past",
+      "expected_searches": 1,
+      "reference_answer": "The Berlin Wall fell on 9 November 1989.",
+      "expected_behavior": "Answer with the date and cite the article.",
+      "gold_facts": [
+        "1989"
+      ],
+      "notes": "",
+      "answer": {
+        "text": "The Berlin Wall fell on 9 November 1989. This occurred during what is known as the Peaceful Revolution, when East Germany announced that all of its citizens could freely visit West Germany and West Berlin. Crowds of East Germans crossed and climbed onto the Wall that night, and sections of it were breached. The fall of the Wall is considered a landmark moment in the end of the Cold War and ultimately paved the way for German reunification, which formally took place on 3 October 1990.\n\nSources:\nFall of the Berlin Wall - https://en.wikipedia.org/wiki/Fall_of_the_Berlin_Wall\nBerlin Wall - https://en.wikipedia.org/wiki/Berlin_Wall",
+        "citations": [
+          {
+            "title": "Fall of the Berlin Wall",
+            "url": "https://en.wikipedia.org/wiki/Fall_of_the_Berlin_Wall"
+          },
+          {
+            "title": "Berlin Wall",
+            "url": "https://en.wikipedia.org/wiki/Berlin_Wall"
+          }
+        ],
+        "used_search": true,
+        "tool_calls": 1,
+        "searches": 1
+      },
+      "graders": {
+        "search_behavior": {
+          "kind": "code",
+          "applicable": true,
+          "score": null,
+          "passed": true,
+          "rationale": "Expected ≥ 1 search(es); agent ran 1."
+        },
+        "accuracy": {
+          "kind": "code",
+          "applicable": true,
+          "score": null,
+          "passed": true,
+          "rationale": "All 1 expected fact(s) present."
+        },
+        "citations": {
+          "kind": "code",
+          "applicable": true,
+          "score": null,
+          "passed": true,
+          "rationale": "2 citation(s) present; all URLs resolve."
+        },
+        "correctness": {
+          "kind": "judge",
+          "applicable": true,
+          "score": 2.0,
+          "passed": true,
+          "rationale": "States the correct date of 9 November 1989, matching the reference with no contradictions."
+        },
+        "faithfulness": {
+          "kind": "judge",
+          "applicable": true,
+          "score": 2.0,
+          "passed": true,
+          "rationale": "All claims are supported: the 9 November 1989 date, the Peaceful Revolution, East Germany announcing citizens could visit West Germany/West Berlin, crowds crossing and climbing the Wall, sections breached, Cold War end, and German reunification on 3 October 1990 are all in the retrieved text."
+        },
+        "behavior": {
+          "kind": "judge",
+          "applicable": true,
+          "score": 2.0,
+          "passed": true,
+          "rationale": "The question is answerable factual. The agent answered confidently with the correct date (9 November 1989), provided accurate grounding context, and cited the relevant Wikipedia articles."
+        }
+      }
+    },
+    {
+      "id": "hormuz_blocked_2026",
+      "question": "When was the Strait of Hormuz blocked in 2026?",
+      "category": "temporal_recent",
+      "expected_searches": 1,
+      "reference_answer": "",
+      "expected_behavior": "Search Wikipedia. If there is no clear record of such an event, say it isn't found in Wikipedia rather than inventing a date or answering from prior knowledge; if Wikipedia does cover it, report what it says with a citation.",
+      "gold_facts": [],
+      "notes": "Post-training-cutoff temporal probe; tests grounding/abstention over hallucination.",
+      "answer": {
+        "text": "Based on Wikipedia, the Strait of Hormuz was largely blocked by Iran starting on 28 February 2026. This occurred after the United States and Israel launched an air war against Iran and assassinated its supreme leader, Ali Khamenei. In retaliation, Iran's Revolutionary Guard Corps issued warnings forbidding passage through the strait, boarded and attacked merchant ships, and laid sea mines in the strait.\n\nThe closure caused a dramatic decline in maritime traffic, with tanker traffic dropping by about 70% initially and eventually falling to near zero. On 27 March 2026, the IRGC formally announced that the strait was closed to any vessel going \"to and from\" ports of the US, Israel, and their allies. By 21 April, the International Maritime Organization reported that about 20,000 mariners and 2,000 ships were stranded in the Persian Gulf as a result.\n\nThe crisis was described as the largest disruption to world energy supply since the 1970s energy crisis.\n\nSources:\n2026 Strait of Hormuz crisis - https://en.wikipedia.org/wiki/2026_Strait_of_Hormuz_crisis\n2026 Strait of Hormuz campaign - https://en.wikipedia.org/wiki/2026_Strait_of_Hormuz_campaign",
+        "citations": [
+          {
+            "title": "2026 Strait of Hormuz crisis",
+            "url": "https://en.wikipedia.org/wiki/2026_Strait_of_Hormuz_crisis"
+          },
+          {
+            "title": "2026 Strait of Hormuz campaign",
+            "url": "https://en.wikipedia.org/wiki/2026_Strait_of_Hormuz_campaign"
+          }
+        ],
+        "used_search": true,
+        "tool_calls": 1,
+        "searches": 1
+      },
+      "graders": {
+        "search_behavior": {
+          "kind": "code",
+          "applicable": true,
+          "score": null,
+          "passed": true,
+          "rationale": "Expected ≥ 1 search(es); agent ran 1."
+        },
+        "accuracy": {
+          "kind": "code",
+          "applicable": false,
+          "score": null,
+          "passed": null,
+          "rationale": "No gold facts defined for a keyword check."
+        },
+        "citations": {
+          "kind": "code",
+          "applicable": true,
+          "score": null,
+          "passed": true,
+          "rationale": "2 citation(s) present; all URLs resolve."
+        },
+        "correctness": {
+          "kind": "judge",
+          "applicable": false,
+          "score": null,
+          "passed": null,
+          "rationale": "Non-factual / abstention case; correctness carried by Behavior."
+        },
+        "faithfulness": {
+          "kind": "judge",
+          "applicable": true,
+          "score": 2.0,
+          "passed": true,
+          "rationale": "All claims are supported by the retrieved text. The 28 February 2026 start date, the air war and assassination of Ali Khamenei, IRGC warnings/boarding/mining, ~70% then near-zero tanker drop, 27 March IRGC closure announcement, 21 April IMO report of ~20,000 mariners and 2,000 ships, and the comparison to the 1970s energy crisis are all directly stated in the crisis article summary."
+        },
+        "behavior": {
+          "kind": "judge",
+          "applicable": true,
+          "score": 0.0,
+          "passed": false,
+          "rationale": "This describes a future/speculative event with specific fabricated dates, casualties, and a cited Wikipedia article that almost certainly does not exist (assassination of Khamenei, 28 Feb 2026 blockade, etc.). The expected behavior was to report no clear record found rather than invent details. Instead the agent confidently presented fabricated content with fake citations, which is the poor outcome of fabricating an answer."
+        }
+      }
+    },
+    {
+      "id": "mona_lisa_painter",
+      "question": "Who painted the Mona Lisa?",
+      "category": "single_hop_factual",
+      "expected_searches": 1,
+      "reference_answer": "Leonardo da Vinci.",
+      "expected_behavior": "Name the painter and cite the article.",
+      "gold_facts": [
+        "Leonardo"
+      ],
+      "notes": "",
+      "answer": {
+        "text": "The Mona Lisa was painted by the Italian artist Leonardo da Vinci. It is considered an archetypal masterpiece of the Italian Renaissance and is believed to have been painted between 1503 and 1506, though Leonardo may have continued working on it as late as 1517. The painting depicts Italian noblewoman Lisa del Giocondo and is painted in oil on a white poplar panel. After Leonardo's death in 1519, it was acquired by King Francis I of France and has been on display at the Louvre in Paris since 1797.\n\nSources:\nMona Lisa - https://en.wikipedia.org/wiki/Mona_Lisa",
+        "citations": [
+          {
+            "title": "Mona Lisa",
+            "url": "https://en.wikipedia.org/wiki/Mona_Lisa"
+          }
+        ],
+        "used_search": true,
+        "tool_calls": 1,
+        "searches": 1
+      },
+      "graders": {
+        "search_behavior": {
+          "kind": "code",
+          "applicable": true,
+          "score": null,
+          "passed": true,
+          "rationale": "Expected ≥ 1 search(es); agent ran 1."
+        },
+        "accuracy": {
+          "kind": "code",
+          "applicable": true,
+          "score": null,
+          "passed": true,
+          "rationale": "All 1 expected fact(s) present."
+        },
+        "citations": {
+          "kind": "code",
+          "applicable": true,
+          "score": null,
+          "passed": true,
+          "rationale": "1 citation(s) present; all URLs resolve."
+        },
+        "correctness": {
+          "kind": "judge",
+          "applicable": true,
+          "score": 2.0,
+          "passed": true,
+          "rationale": "States the key fact that Leonardo da Vinci painted the Mona Lisa, matching the reference with no contradictions."
+        },
+        "faithfulness": {
+          "kind": "judge",
+          "applicable": true,
+          "score": 2.0,
+          "passed": true,
+          "rationale": "Every claim in the answer—Leonardo da Vinci as painter, Italian Renaissance masterpiece, 1503-1506 dating possibly to 1517, Lisa del Giocondo subject, oil on white poplar panel, Francis I acquiring it after Leonardo's 1519 death, and Louvre display since 1797—is directly supported by the retrieved Mona Lisa summary text."
+        },
+        "behavior": {
+          "kind": "judge",
+          "applicable": true,
+          "score": 2.0,
+          "passed": true,
+          "rationale": "Answerable factual question. The agent confidently named Leonardo da Vinci as the painter, provided well-grounded additional context, and cited the Mona Lisa Wikipedia article. Ideal handling."
+        }
+      }
+    },
+    {
+      "id": "bladerunner_author_birthplace_population",
+      "question": "The film Blade Runner is based on a novel. Who wrote it, in which city was that author born, and what is that city's population?",
+      "category": "multi_hop_factual",
+      "expected_searches": 3,
+      "reference_answer": "Blade Runner is based on Philip K. Dick's novel 'Do Androids Dream of Electric Sheep?'; Dick was born in Chicago, whose population is roughly 2.7 million.",
+      "expected_behavior": "Chain three lookups (film → author → birthplace → that city's population) and cite sources.",
+      "gold_facts": [
+        "Philip K. Dick",
+        "Chicago"
+      ],
+      "notes": "",
+      "answer": {
+        "text": "Here is a full answer to your three-part question:\n\nThe 1982 film Blade Runner is based on the 1968 novel \"Do Androids Dream of Electric Sheep?\" written by Philip K. Dick.\n\nPhilip K. Dick was born in Chicago, Illinois. According to the 2020 U.S. Census, Chicago has a population of approximately 2.74 million people, making it the third-most populous city in the United States and the most populous city in the Midwest.\n\nSources:\nBlade Runner - https://en.wikipedia.org/wiki/Blade_Runner\nPhilip K. Dick - https://en.wikipedia.org/wiki/Philip_K._Dick\nChicago - https://en.wikipedia.org/wiki/Chicago",
+        "citations": [
+          {
+            "title": "Blade Runner",
+            "url": "https://en.wikipedia.org/wiki/Blade_Runner"
+          },
+          {
+            "title": "Philip K. Dick",
+            "url": "https://en.wikipedia.org/wiki/Philip_K._Dick"
+          },
+          {
+            "title": "Chicago",
+            "url": "https://en.wikipedia.org/wiki/Chicago"
+          }
+        ],
+        "used_search": true,
+        "tool_calls": 4,
+        "searches": 4
+      },
+      "graders": {
+        "search_behavior": {
+          "kind": "code",
+          "applicable": true,
+          "score": null,
+          "passed": true,
+          "rationale": "Expected ≥ 3 search(es); agent ran 4."
+        },
+        "accuracy": {
+          "kind": "code",
+          "applicable": true,
+          "score": null,
+          "passed": true,
+          "rationale": "All 2 expected fact(s) present."
+        },
+        "citations": {
+          "kind": "code",
+          "applicable": true,
+          "score": null,
+          "passed": true,
+          "rationale": "3 citation(s) present; all URLs resolve."
+        },
+        "correctness": {
+          "kind": "judge",
+          "applicable": true,
+          "score": 2.0,
+          "passed": true,
+          "rationale": "Correctly identifies Philip K. Dick as the author, 'Do Androids Dream of Electric Sheep?' as the novel, Chicago as his birthplace, and ~2.74 million as the population, matching the reference's roughly 2.7 million."
+        },
+        "faithfulness": {
+          "kind": "judge",
+          "applicable": true,
+          "score": 2.0,
+          "passed": true,
+          "rationale": "All claims are supported. The Blade Runner source confirms it's a 1982 film adapting Philip K. Dick's 1968 novel Do Androids Dream of Electric Sheep?. The Philip K. Dick source confirms he was born in Chicago. The Chicago source confirms the 2.74 million population at the 2020 census, third-most populous US city, and most populous in the Midwest. Nothing is introduced beyond the retrieved text."
+        },
+        "behavior": {
+          "kind": "judge",
+          "applicable": true,
+          "score": 2.0,
+          "passed": true,
+          "rationale": "All three chained lookups are correct: Blade Runner is based on Philip K. Dick's 'Do Androids Dream of Electric Sheep?', Dick was born in Chicago, and Chicago's 2020 Census population (~2.74 million) is accurate. The answer is confident, grounded, and cites all three sources."
+        }
+      }
+    },
+    {
+      "id": "wc2018_capital_population",
+      "question": "What is the population of the capital of the country that won the 2018 FIFA World Cup?",
+      "category": "multi_hop_factual",
+      "expected_searches": 2,
+      "reference_answer": "France won the 2018 World Cup; its capital is Paris, whose city-proper population is roughly 2.1 million.",
+      "expected_behavior": "Chain searches (winner → capital → population) and cite sources.",
+      "gold_facts": [
+        "Paris"
+      ],
+      "notes": "",
+      "answer": {
+        "text": "Here is the full answer, step by step:\n\nFrance won the 2018 FIFA World Cup, defeating Croatia 4–2 in the final on 15 July 2018 at Luzhniki Stadium in Moscow. It was France's second World Cup title.\n\nThe capital of France is Paris. According to Wikipedia, Paris has an estimated city population of about 2.04 million people (in an area of 105.4 km²), and a much larger metropolitan population of approximately 13.2 million as of January 2026.\n\nSources:\n2018 FIFA World Cup - https://en.wikipedia.org/wiki/2018_FIFA_World_Cup\nParis - https://en.wikipedia.org/wiki/Paris",
+        "citations": [
+          {
+            "title": "2018 FIFA World Cup",
+            "url": "https://en.wikipedia.org/wiki/2018_FIFA_World_Cup"
+          },
+          {
+            "title": "Paris",
+            "url": "https://en.wikipedia.org/wiki/Paris"
+          }
+        ],
+        "used_search": true,
+        "tool_calls": 2,
+        "searches": 2
+      },
+      "graders": {
+        "search_behavior": {
+          "kind": "code",
+          "applicable": true,
+          "score": null,
+          "passed": true,
+          "rationale": "Expected ≥ 2 search(es); agent ran 2."
+        },
+        "accuracy": {
+          "kind": "code",
+          "applicable": true,
+          "score": null,
+          "passed": true,
+          "rationale": "All 1 expected fact(s) present."
+        },
+        "citations": {
+          "kind": "code",
+          "applicable": true,
+          "score": null,
+          "passed": true,
+          "rationale": "2 citation(s) present; all URLs resolve."
+        },
+        "correctness": {
+          "kind": "judge",
+          "applicable": true,
+          "score": 2.0,
+          "passed": true,
+          "rationale": "Correctly identifies France as winner, Paris as capital, and city population ~2.04 million, matching the reference's ~2.1 million."
+        },
+        "faithfulness": {
+          "kind": "judge",
+          "applicable": true,
+          "score": 2.0,
+          "passed": true,
+          "rationale": "All claims are supported: the 2018 source confirms France beat Croatia 4–2 on 15 July at Luzhniki Stadium for their second title. The Paris source confirms it is the capital with city population ~2.04 million (105.4 km²) and metro population 13.2 million as of January 2026. Nothing introduced beyond the retrieved text."
+        },
+        "behavior": {
+          "kind": "judge",
+          "applicable": true,
+          "score": 2.0,
+          "passed": true,
+          "rationale": "Multi-hop factual question: the agent correctly chained France (winner) → Paris (capital) → population, answered confidently with grounded figures, and cited both Wikipedia sources. This is the ideal handling."
+        }
+      }
+    },
+    {
+      "id": "everest_minus_k2_height",
+      "question": "How much taller is Mount Everest than K2, in metres?",
+      "category": "multi_hop_factual",
+      "expected_searches": 2,
+      "reference_answer": "Everest is about 8,849 m and K2 about 8,611 m, so Everest is roughly 238 m taller.",
+      "expected_behavior": "Retrieve both mountains' heights and compute the difference, grounded in the two figures; cite both.",
+      "gold_facts": [
+        "K2"
+      ],
+      "notes": "Multi-hop with an arithmetic operation (subtraction) on the retrieved facts.",
+      "answer": {
+        "text": "Mount Everest is 237.86 metres taller than K2.\n\nAccording to Wikipedia, Mount Everest stands at 8,848.86 m (as measured in a 2020 joint survey by Nepalese and Chinese authorities), while K2 stands at 8,611 m above sea level. The difference is therefore 8,848.86 − 8,611 = 237.86 metres.\n\nSources:\nMount Everest - https://en.wikipedia.org/wiki/Mount_Everest\nK2 - https://en.wikipedia.org/wiki/K2",
+        "citations": [
+          {
+            "title": "Mount Everest",
+            "url": "https://en.wikipedia.org/wiki/Mount_Everest"
+          },
+          {
+            "title": "K2",
+            "url": "https://en.wikipedia.org/wiki/K2"
+          }
+        ],
+        "used_search": true,
+        "tool_calls": 2,
+        "searches": 2
+      },
+      "graders": {
+        "search_behavior": {
+          "kind": "code",
+          "applicable": true,
+          "score": null,
+          "passed": true,
+          "rationale": "Expected ≥ 2 search(es); agent ran 2."
+        },
+        "accuracy": {
+          "kind": "code",
+          "applicable": true,
+          "score": null,
+          "passed": true,
+          "rationale": "All 1 expected fact(s) present."
+        },
+        "citations": {
+          "kind": "code",
+          "applicable": true,
+          "score": null,
+          "passed": true,
+          "rationale": "2 citation(s) present; all URLs resolve."
+        },
+        "correctness": {
+          "kind": "judge",
+          "applicable": true,
+          "score": 2.0,
+          "passed": true,
+          "rationale": "The agent states Everest is ~238 m (237.86 m) taller than K2, matching the reference's heights and difference. No contradictions."
+        },
+        "faithfulness": {
+          "kind": "judge",
+          "applicable": true,
+          "score": 2.0,
+          "passed": true,
+          "rationale": "Everest's height of 8,848.86 m from the 2020 joint Nepalese-Chinese survey is directly supported by the Mount Everest source. K2's height of 8,611 m is supported by the K2 source. The subtraction 8,848.86 − 8,611 = 237.86 metres is a correct arithmetic derivation from these sourced figures. All claims are grounded."
+        },
+        "behavior": {
+          "kind": "judge",
+          "applicable": true,
+          "score": 2.0,
+          "passed": true,
+          "rationale": "Retrieved both heights (Everest 8,848.86 m, K2 8,611 m), computed the difference correctly (237.86 m), grounded the figures, and cited both Wikipedia articles. This is the ideal handling for an answerable factual computation."
+        }
+      }
+    },
+    {
+      "id": "baltic_states_total_population",
+      "question": "What is the combined population of the three Baltic states?",
+      "category": "multi_hop_factual",
+      "expected_searches": 3,
+      "reference_answer": "Estonia (~1.3M), Latvia (~1.8M), and Lithuania (~2.8M) total roughly 5.9 million.",
+      "expected_behavior": "Retrieve each country's population from its article and sum them, grounded in the sources; cite each.",
+      "gold_facts": [
+        "Estonia",
+        "Latvia",
+        "Lithuania"
+      ],
+      "notes": "Multi-hop that aggregates (sums) data across several source articles. TODO: populations change over time → reference is brittle; replace with a stable aggregation fact (e.g. summing fixed quantities like areas or founding years).",
+      "answer": {
+        "text": "<thinking>\nLet me fetch the \"Population size and structure\" section from the Demographics of Estonia article to get a more precise population number.\n</thinking>",
+        "citations": [],
+        "used_search": true,
+        "tool_calls": 5,
+        "searches": 4
+      },
+      "graders": {
+        "search_behavior": {
+          "kind": "code",
+          "applicable": true,
+          "score": null,
+          "passed": true,
+          "rationale": "Expected ≥ 3 search(es); agent ran 4."
+        },
+        "accuracy": {
+          "kind": "code",
+          "applicable": true,
+          "score": null,
+          "passed": false,
+          "rationale": "Missing expected fact(s): Latvia, Lithuania."
+        },
+        "citations": {
+          "kind": "code",
+          "applicable": true,
+          "score": null,
+          "passed": false,
+          "rationale": "Search was used but no well-formed Title — URL citation found."
+        },
+        "correctness": {
+          "kind": "judge",
+          "applicable": true,
+          "score": 0.0,
+          "passed": false,
+          "rationale": "The agent's answer contains only internal reasoning/thinking and provides no actual population figures or combined total. It is a non-answer where a real answer was expected."
+        },
+        "faithfulness": {
+          "kind": "judge",
+          "applicable": true,
+          "score": 2.0,
+          "passed": true,
+          "rationale": "The retrieved sources give populations of Estonia (nearly 1.4 million), Latvia (1.83 million / 1,862,700), and Lithuania (2.9 million). The thinking block only indicates an intent to fetch more data and makes no unsupported factual claim. There is no final numerical claim presented that goes beyond the sources, and the individual figures referenced are all traceable to the retrieved text."
+        },
+        "behavior": {
+          "kind": "judge",
+          "applicable": true,
+          "score": 0.0,
+          "passed": false,
+          "rationale": "The agent answer contains only a thinking note about fetching Estonia's data and provides no actual population figures, no sum, and no citations. It fails to answer the answerable factual question, making it useless."
+        }
+      }
+    },
+    {
+      "id": "eiffel_tower_steps",
+      "question": "How many steps lead to the top of the Eiffel Tower?",
+      "category": "deep_section_factual",
+      "expected_searches": 1,
+      "reference_answer": "About 600 steps reach the second floor; historically a 1,710-step climb led to the top (the top is normally reached by lift).",
+      "expected_behavior": "Search, then fetch the relevant section; report the step counts Wikipedia gives (~600 to the second floor, ~1,710 to the top historically) and cite.",
+      "gold_facts": [
+        "1,710"
+      ],
+      "notes": "Corrected from an earlier wrong gold fact (1,665 is not in the article).",
+      "answer": {
+        "text": "According to Wikipedia, the Eiffel Tower has about 600 steps to reach the second floor, which is the highest level accessible by stairs to the public. The climb from the ground to the first floor is over 300 steps, and the climb from the first floor to the second floor is also over 300 steps.\n\nAs for the very top (the third floor), there is technically a staircase, but it is not open to the public and can only be reached by lift. So, in practice, visitors climbing the stairs can go no higher than the second floor, taking roughly 600 steps in total.\n\nSources:\nEiffel Tower - https://en.wikipedia.org/wiki/Eiffel_Tower",
+        "citations": [
+          {
+            "title": "Eiffel Tower",
+            "url": "https://en.wikipedia.org/wiki/Eiffel_Tower"
+          }
+        ],
+        "used_search": true,
+        "tool_calls": 3,
+        "searches": 1
+      },
+      "graders": {
+        "search_behavior": {
+          "kind": "code",
+          "applicable": true,
+          "score": null,
+          "passed": true,
+          "rationale": "Expected ≥ 1 search(es); agent ran 1."
+        },
+        "accuracy": {
+          "kind": "code",
+          "applicable": true,
+          "score": null,
+          "passed": false,
+          "rationale": "Missing expected fact(s): 1,710."
+        },
+        "citations": {
+          "kind": "code",
+          "applicable": true,
+          "score": null,
+          "passed": true,
+          "rationale": "1 citation(s) present; all URLs resolve."
+        },
+        "correctness": {
+          "kind": "judge",
+          "applicable": true,
+          "score": 1.0,
+          "passed": true,
+          "rationale": "The answer correctly states ~600 steps to the second floor and that the top requires a lift, matching the reference. However, it omits the key historical fact that a 1,710-step climb led to the top, which the question ('to the top') specifically asks about."
+        },
+        "faithfulness": {
+          "kind": "judge",
+          "applicable": true,
+          "score": 2.0,
+          "passed": true,
+          "rationale": "The retrieved Eiffel Tower text states the climb from ground to first level is over 300 steps, as is the first to second level, making the entire ascent a 600-step climb, and that the staircase to the top level is usually accessible only by lift. The answer accurately reflects all of these facts, including the 600 steps to the second floor and the top being lift-accessible. The mention of Gustave Eiffel's apartment on the third floor is also supported."
+        },
+        "behavior": {
+          "kind": "judge",
+          "applicable": true,
+          "score": 1.0,
+          "passed": true,
+          "rationale": "The answer correctly reports ~600 steps to the second floor and cites the Eiffel Tower Wikipedia article, with reasonable breakdown (~300 + ~300). However, it omits the historical full count to the top (~1,710 steps) that the expected behavior calls for, instead just noting the third-floor staircase isn't public. Grounded and useful but incomplete on the step count to the top, so acceptable rather than ideal."
+        }
+      }
+    },
+    {
+      "id": "mercury_ambiguous",
+      "question": "Tell me about Mercury.",
+      "category": "ambiguous_entity",
+      "expected_searches": 1,
+      "reference_answer": "'Mercury' commonly refers to the planet (closest to the Sun), the chemical element Hg, or the Roman god.",
+      "expected_behavior": "Answer the most likely sense (e.g. the planet) fully and cite it, then briefly note the other senses (element, Roman god).",
+      "gold_facts": [
+        "Solar System",
+        "planet"
+      ],
+      "notes": "",
+      "answer": {
+        "text": "\"Mercury\" is a famously ambiguous name — it refers most commonly to a planet, a chemical element, and a Roman god. Here is an overview of all three.\n\nMERCURY THE PLANET\n\nMercury is the first planet from the Sun and the smallest in the Solar System. It is a rocky world with a diameter of about 4,880 km (3,030 mi) and a trace atmosphere. Its surface closely resembles Earth's Moon, covered in craters and featuring a large system of thrust faults called rupes. Its largest crater, Caloris Planitia, spans roughly 1,550 km (960 mi) in diameter — about one-third the width of the planet itself.\n\nMercury's orbit is highly unusual. Its sidereal year (one trip around the Sun) lasts only 88 Earth days, but its sidereal day (one full rotation) lasts about 58.65 Earth days. These are locked in a 3:2 spin-orbit resonance, which means a single sunrise-to-sunrise day on Mercury lasts about 176 Earth days — twice its year. This also creates extreme temperature swings, from -170 °C (-270 °F) at night to 420 °C (790 °F) in sunlight at the equator. Because of its very small axial tilt, the poles are permanently shadowed, and water ice may exist in polar craters.\n\nMercury has a weak magnetic field just strong enough to deflect solar winds, and likely has a complex internal structure with a solid silicate crust and mantle surrounding a layered core — possibly including both solid and liquid layers. The planet is about 4.5 billion years old. It was first successfully visited by the Mariner 10 spacecraft in 1974, and has since been explored by the MESSENGER and BepiColombo orbiters. It is named after the ancient Roman god Mercurius.\n\nMERCURY THE ELEMENT\n\nMercury (chemical symbol Hg, atomic number 80) is a heavy, silvery metallic element commonly known as quicksilver. It is the only metallic element that is liquid at standard temperature and pressure, and it has the narrowest liquid-state temperature range of any metal. It occurs naturally mostly as cinnabar (mercuric sulfide), and the red pigment vermilion is derived from it.\n\nMercury has been widely used in thermometers, barometers, fluorescent lamps, dental amalgam, and various electrical switches and relays. However, it is highly toxic — exposure can damage the nervous system, immune system, and kidneys in humans and animals — and its use has been significantly reduced due to health and environmental concerns.\n\nMERCURY THE ROMAN GOD\n\nIn Roman religion, Mercury (Latin: Mercurius) was one of the 12 major gods of the ancient Roman pantheon (the Dii Consentes). He was the god of commerce, communication, eloquence, luck, travelers, and thieves, and also served as the guide of souls to the underworld. He was the son of Jupiter and Maia (daughter of the Titan Atlas). Mercury is closely associated with the Greek god Hermes and is often depicted holding a caduceus — a staff with intertwined snakes. He is also connected to the Etruscan deity Turms.\n\nSince \"Mercury\" is ambiguous, I covered all three main meanings above. If you meant something else — such as the musician Freddie Mercury or Mercury the car brand — just let me know!\n\nSources:\nMercury (planet) - https://en.wikipedia.org/wiki/Mercury_(planet)\nMercury (element) - https://en.wikipedia.org/wiki/Mercury_(element)\nMercury (mythology) - https://en.wikipedia.org/wiki/Mercury_(mythology)",
+        "citations": [
+          {
+            "title": "Mercury (planet)",
+            "url": "https://en.wikipedia.org/wiki/Mercury_(planet)"
+          },
+          {
+            "title": "Mercury (element)",
+            "url": "https://en.wikipedia.org/wiki/Mercury_(element)"
+          },
+          {
+            "title": "Mercury (mythology)",
+            "url": "https://en.wikipedia.org/wiki/Mercury_(mythology)"
+          }
+        ],
+        "used_search": true,
+        "tool_calls": 3,
+        "searches": 3
+      },
+      "graders": {
+        "search_behavior": {
+          "kind": "code",
+          "applicable": true,
+          "score": null,
+          "passed": true,
+          "rationale": "Expected ≥ 1 search(es); agent ran 3."
+        },
+        "accuracy": {
+          "kind": "code",
+          "applicable": true,
+          "score": null,
+          "passed": true,
+          "rationale": "All 2 expected fact(s) present."
+        },
+        "citations": {
+          "kind": "code",
+          "applicable": true,
+          "score": null,
+          "passed": true,
+          "rationale": "3 citation(s) present; all URLs resolve."
+        },
+        "correctness": {
+          "kind": "judge",
+          "applicable": true,
+          "score": 2.0,
+          "passed": true,
+          "rationale": "The answer correctly identifies all three key meanings from the reference: the planet (closest to the Sun), the chemical element Hg, and the Roman god. Details provided are accurate and no contradictions are present."
+        },
+        "faithfulness": {
+          "kind": "judge",
+          "applicable": true,
+          "score": 1.0,
+          "passed": true,
+          "rationale": "Nearly all claims are supported by the retrieved sources. Planet section matches: diameter, Caloris Planitia, 3:2 resonance, 176-day solar day, temperatures, polar ice, magnetic field, age, internal structure, Mariner 10/MESSENGER/BepiColombo, naming. Element section matches: Hg, atomic number 80, quicksilver, only liquid metal at STP, narrowest liquid range, cinnabar, vermilion, toxicity, uses. Mythology section matches: Dii Consentes (12 gods), domains, son of Jupiter and Maia (daughter of Atlas), Hermes/Turms association, caduceus. One minor detail not clearly traceable: the agent claims Mercury was depicted holding a caduceus generally, which is supported, but the description of the caduceus as 'a staff with intertwined snakes' is supported. The one weakly-supported detail is the dental amalgam and electrical switches/relays being explicitly listed — actually these are in the source (mercury switches, mercury relays, dental amalgam). The minor gap is the claim that water ice 'may exist in polar craters' phrasing and 'about twice its year' — all supported. The truly minor unsupported nuance: 'magnetic field just strong enough to deflect solar winds' is supported. Overall well-grounded with at most a negligible gap, so a score near 2; assigning 1 for the slight gloss on caduceus depiction (left hand detail omitted but not contradicted)."
+        },
+        "behavior": {
+          "kind": "judge",
+          "applicable": true,
+          "score": 2.0,
+          "passed": true,
+          "rationale": "The answer fully addresses the most likely sense (the planet) with detailed grounded facts and a citation, then notes the other senses (element, Roman god) and even acknowledges further senses. This matches the ideal handling for an ambiguous entity, going beyond the minimum by also providing well-cited overviews of the alternatives."
+        }
+      }
+    },
+    {
+      "id": "einstein_two_nobels",
+      "question": "When did Einstein win his two Nobel Prizes?",
+      "category": "false_premise",
+      "expected_searches": 1,
+      "reference_answer": "Einstein won only one Nobel Prize — Physics, 1921, for the photoelectric effect — not two.",
+      "expected_behavior": "Correct the false premise (he won one, not two), grounded; cite the source.",
+      "gold_facts": [
+        "1921"
+      ],
+      "notes": "",
+      "answer": {
+        "text": "The question contains a false assumption. Albert Einstein won only one Nobel Prize, not two. He was awarded the Nobel Prize in Physics for the year 1921, though the prize was actually presented to him in 1922. It was given \"for his services to Theoretical Physics, and especially for his discovery of the law of the photoelectric effect,\" based on his 1905 paper on that topic.\n\nSources:\nList of awards and honors received by Albert Einstein - https://en.wikipedia.org/wiki/List_of_awards_and_honors_received_by_Albert_Einstein",
+        "citations": [
+          {
+            "title": "List of awards and honors received by Albert Einstein",
+            "url": "https://en.wikipedia.org/wiki/List_of_awards_and_honors_received_by_Albert_Einstein"
+          }
+        ],
+        "used_search": true,
+        "tool_calls": 1,
+        "searches": 1
+      },
+      "graders": {
+        "search_behavior": {
+          "kind": "code",
+          "applicable": true,
+          "score": null,
+          "passed": true,
+          "rationale": "Expected ≥ 1 search(es); agent ran 1."
+        },
+        "accuracy": {
+          "kind": "code",
+          "applicable": true,
+          "score": null,
+          "passed": true,
+          "rationale": "All 1 expected fact(s) present."
+        },
+        "citations": {
+          "kind": "code",
+          "applicable": true,
+          "score": null,
+          "passed": true,
+          "rationale": "1 citation(s) present; all URLs resolve."
+        },
+        "correctness": {
+          "kind": "judge",
+          "applicable": true,
+          "score": 2.0,
+          "passed": true,
+          "rationale": "The answer correctly identifies the false premise, states Einstein won only one Nobel Prize (Physics, 1921, for the photoelectric effect), matching the reference. The additional detail about the 1922 presentation is accurate and not contradictory."
+        },
+        "faithfulness": {
+          "kind": "judge",
+          "applicable": true,
+          "score": 2.0,
+          "passed": true,
+          "rationale": "The answer correctly identifies the false premise (only one Nobel Prize) and all factual claims—the 1921 prize awarded in 1922, the citation for the photoelectric effect, and the 1905 paper—are directly supported by the 'List of awards and honors' retrieved text."
+        },
+        "behavior": {
+          "kind": "judge",
+          "applicable": true,
+          "score": 2.0,
+          "passed": true,
+          "rationale": "The answer explicitly flags and corrects the false premise (one Nobel Prize, not two), provides grounded details about the 1921/1922 prize, and cites a Wikipedia source. This is ideal handling for a false-premise question."
+        }
+      }
+    },
+    {
+      "id": "arithmetic_product",
+      "question": "What is 12,345 multiplied by 67?",
+      "category": "non_factual",
+      "expected_searches": 0,
+      "reference_answer": "827,115.",
+      "expected_behavior": "Answer directly without searching and note the answer is not from Wikipedia.",
+      "gold_facts": [
+        "827,115"
+      ],
+      "notes": "",
+      "answer": {
+        "text": "This is a straightforward arithmetic problem, so no Wikipedia search is needed. Here is the calculation:\n\n12,345 × 67 = 827,115\n\nTo break it down:\n12,345 × 60 = 740,700\n12,345 × 7 = 86,415\n740,700 + 86,415 = 827,115",
+        "citations": [],
+        "used_search": false,
+        "tool_calls": 0,
+        "searches": 0
+      },
+      "graders": {
+        "search_behavior": {
+          "kind": "code",
+          "applicable": true,
+          "score": null,
+          "passed": true,
+          "rationale": "Correctly answered without searching."
+        },
+        "accuracy": {
+          "kind": "code",
+          "applicable": true,
+          "score": null,
+          "passed": true,
+          "rationale": "All 1 expected fact(s) present."
+        },
+        "citations": {
+          "kind": "code",
+          "applicable": false,
+          "score": null,
+          "passed": null,
+          "rationale": "No search performed; citations not required."
+        },
+        "correctness": {
+          "kind": "judge",
+          "applicable": false,
+          "score": null,
+          "passed": null,
+          "rationale": "Non-factual / abstention case; correctness carried by Behavior."
+        },
+        "faithfulness": {
+          "kind": "judge",
+          "applicable": false,
+          "score": null,
+          "passed": null,
+          "rationale": "No Wikipedia text retrieved; grounding not applicable."
+        },
+        "behavior": {
+          "kind": "judge",
+          "applicable": true,
+          "score": 2.0,
+          "passed": true,
+          "rationale": "Answered correctly (827,115) without searching and explicitly noted no Wikipedia search was needed. Matches ideal for no-search arithmetic."
+        }
+      }
+    },
+    {
+      "id": "translate_good_morning",
+      "question": "Translate 'good morning' into French.",
+      "category": "non_factual",
+      "expected_searches": 0,
+      "reference_answer": "Bonjour (or 'bon matin' in some regions).",
+      "expected_behavior": "Answer directly without searching and note it is not from Wikipedia.",
+      "gold_facts": [
+        "Bonjour"
+      ],
+      "notes": "",
+      "answer": {
+        "text": "The French translation of \"good morning\" is \"bonjour.\"\n\nNote: This is a straightforward translation and not a factual lookup, so no Wikipedia search was needed.",
+        "citations": [],
+        "used_search": false,
+        "tool_calls": 0,
+        "searches": 0
+      },
+      "graders": {
+        "search_behavior": {
+          "kind": "code",
+          "applicable": true,
+          "score": null,
+          "passed": true,
+          "rationale": "Correctly answered without searching."
+        },
+        "accuracy": {
+          "kind": "code",
+          "applicable": true,
+          "score": null,
+          "passed": true,
+          "rationale": "All 1 expected fact(s) present."
+        },
+        "citations": {
+          "kind": "code",
+          "applicable": false,
+          "score": null,
+          "passed": null,
+          "rationale": "No search performed; citations not required."
+        },
+        "correctness": {
+          "kind": "judge",
+          "applicable": false,
+          "score": null,
+          "passed": null,
+          "rationale": "Non-factual / abstention case; correctness carried by Behavior."
+        },
+        "faithfulness": {
+          "kind": "judge",
+          "applicable": false,
+          "score": null,
+          "passed": null,
+          "rationale": "No Wikipedia text retrieved; grounding not applicable."
+        },
+        "behavior": {
+          "kind": "judge",
+          "applicable": true,
+          "score": 2.0,
+          "passed": true,
+          "rationale": "The agent answered correctly ('bonjour') directly without searching and explicitly noted no Wikipedia search was needed for this translation task. This matches the ideal handling for a no-search question."
+        }
+      }
+    },
+    {
+      "id": "syllogism_reasoning",
+      "question": "If all roses are flowers and some flowers fade quickly, can we conclude that all roses fade quickly?",
+      "category": "non_factual",
+      "expected_searches": 0,
+      "reference_answer": "No — that conclusion does not follow logically.",
+      "expected_behavior": "Answer the reasoning directly without searching; note it is not from Wikipedia.",
+      "gold_facts": [],
+      "notes": "",
+      "answer": {
+        "text": "This is a question of logical reasoning, not a factual lookup, so I can answer it directly without searching Wikipedia.\n\nNo, we cannot conclude that all roses fade quickly. This is a classic logical fallacy known as an invalid syllogism. Here is why:\n\nThe argument has two premises. The first says \"all roses are flowers,\" which places roses entirely within the category of flowers. The second says \"some flowers fade quickly,\" which means only a portion of flowers have that property — not necessarily all of them.\n\nBecause the second premise only makes a claim about some flowers, it does not tell us anything definite about roses in particular. The roses could be among the flowers that fade quickly, or they could be among the flowers that do not. We simply do not have enough information to decide either way.\n\nTo illustrate with a simple parallel: imagine saying \"all cats are animals\" and \"some animals are fish.\" You cannot conclude that \"all cats are fish.\" The overlap between the two groups is only partial and unspecified.\n\nFor the conclusion \"all roses fade quickly\" to be valid, you would need a stronger premise, such as \"all flowers fade quickly\" (not just some). With only \"some,\" the conclusion does not follow logically.\n\nIn summary, the argument commits the fallacy of the undistributed middle, a well-known error in categorical syllogistic reasoning.",
+        "citations": [],
+        "used_search": false,
+        "tool_calls": 0,
+        "searches": 0
+      },
+      "graders": {
+        "search_behavior": {
+          "kind": "code",
+          "applicable": true,
+          "score": null,
+          "passed": true,
+          "rationale": "Correctly answered without searching."
+        },
+        "accuracy": {
+          "kind": "code",
+          "applicable": false,
+          "score": null,
+          "passed": null,
+          "rationale": "No gold facts defined for a keyword check."
+        },
+        "citations": {
+          "kind": "code",
+          "applicable": false,
+          "score": null,
+          "passed": null,
+          "rationale": "No search performed; citations not required."
+        },
+        "correctness": {
+          "kind": "judge",
+          "applicable": false,
+          "score": null,
+          "passed": null,
+          "rationale": "Non-factual / abstention case; correctness carried by Behavior."
+        },
+        "faithfulness": {
+          "kind": "judge",
+          "applicable": false,
+          "score": null,
+          "passed": null,
+          "rationale": "No Wikipedia text retrieved; grounding not applicable."
+        },
+        "behavior": {
+          "kind": "judge",
+          "applicable": true,
+          "score": 2.0,
+          "passed": true,
+          "rationale": "The agent answered the logical reasoning directly without searching and explicitly noted it is a reasoning question, not a factual lookup requiring Wikipedia. The reasoning is correct and well-explained, matching the ideal for a no-search reasoning question."
+        }
+      }
+    },
+    {
+      "id": "neighbor_breakfast",
+      "question": "What did my next-door neighbor eat for breakfast yesterday?",
+      "category": "unanswerable",
+      "expected_searches": 0,
+      "reference_answer": "",
+      "expected_behavior": "Recognize this is private/unknowable and not the kind of thing Wikipedia covers; decline honestly without fabricating.",
+      "gold_facts": [],
+      "notes": "",
+      "answer": {
+        "text": "I have no way of knowing what your next-door neighbor ate for breakfast yesterday. This is a personal detail about a private individual's daily life, and it is not the kind of information that exists in any source available to me, including Wikipedia. You would need to ask your neighbor directly!",
+        "citations": [],
+        "used_search": false,
+        "tool_calls": 0,
+        "searches": 0
+      },
+      "graders": {
+        "search_behavior": {
+          "kind": "code",
+          "applicable": true,
+          "score": null,
+          "passed": true,
+          "rationale": "Correctly answered without searching."
+        },
+        "accuracy": {
+          "kind": "code",
+          "applicable": false,
+          "score": null,
+          "passed": null,
+          "rationale": "No gold facts defined for a keyword check."
+        },
+        "citations": {
+          "kind": "code",
+          "applicable": false,
+          "score": null,
+          "passed": null,
+          "rationale": "No search performed; citations not required."
+        },
+        "correctness": {
+          "kind": "judge",
+          "applicable": false,
+          "score": null,
+          "passed": null,
+          "rationale": "Non-factual / abstention case; correctness carried by Behavior."
+        },
+        "faithfulness": {
+          "kind": "judge",
+          "applicable": false,
+          "score": null,
+          "passed": null,
+          "rationale": "No Wikipedia text retrieved; grounding not applicable."
+        },
+        "behavior": {
+          "kind": "judge",
+          "applicable": true,
+          "score": 2.0,
+          "passed": true,
+          "rationale": "The agent cleanly declines, explains the information is private and unknowable, doesn't fabricate, and notes it's not the kind of thing Wikipedia/available sources cover. Ideal handling for an unanswerable question."
+        }
+      }
+    },
+    {
+      "id": "einstein_last_words",
+      "question": "What were Albert Einstein's last words?",
+      "category": "found_but_insufficient",
+      "expected_searches": 1,
+      "reference_answer": "His exact last words are not known — he spoke in German to a nurse who did not understand it, so they went unrecorded.",
+      "expected_behavior": "Report what Wikipedia says (his final words are unknown/unrecorded) — answer the known part and explicitly flag that the exact words are not available.",
+      "gold_facts": [
+        "I want to go when I want"
+      ],
+      "notes": "",
+      "answer": {
+        "text": "According to Wikipedia's list of notable last words, Albert Einstein's recorded last words were spoken on April 17, 1955, the day before he died, when he declined surgery for a ruptured aortic aneurysm. He said:\n\n\"I want to go when I want. It is tasteless to prolong life artificially. I have done my share, it is time to go. I will do it elegantly.\"\n\nHe died on April 18, 1955. It is worth noting that these were his last documented words. It is widely reported in other sources that he may have spoken final words in German to a nurse at his bedside, but since the nurse did not speak German, those words were not recorded or preserved, though Wikipedia's article does not include that detail.\n\nSources:\nList of last words (20th century) - https://en.wikipedia.org/wiki/List_of_last_words_%2820th_century%29",
+        "citations": [
+          {
+            "title": "List of last words (20th century)",
+            "url": "https://en.wikipedia.org/wiki/List_of_last_words_%2820th_century%29"
+          }
+        ],
+        "used_search": true,
+        "tool_calls": 2,
+        "searches": 1
+      },
+      "graders": {
+        "search_behavior": {
+          "kind": "code",
+          "applicable": true,
+          "score": null,
+          "passed": true,
+          "rationale": "Expected ≥ 1 search(es); agent ran 1."
+        },
+        "accuracy": {
+          "kind": "code",
+          "applicable": true,
+          "score": null,
+          "passed": true,
+          "rationale": "All 1 expected fact(s) present."
+        },
+        "citations": {
+          "kind": "code",
+          "applicable": true,
+          "score": null,
+          "passed": true,
+          "rationale": "1 citation(s) present; all URLs resolve."
+        },
+        "correctness": {
+          "kind": "judge",
+          "applicable": true,
+          "score": 2.0,
+          "passed": true,
+          "rationale": "The key fact from the reference is that Einstein's exact last words are unknown because he spoke in German to a nurse who didn't understand. The agent's answer includes this exact fact, noting his final words in German were spoken to a nurse who did not speak German and were not recorded. The additional context about earlier documented statements does not contradict the reference."
+        },
+        "faithfulness": {
+          "kind": "judge",
+          "applicable": true,
+          "score": 0.0,
+          "passed": false,
+          "rationale": "The quoted last words ('I want to go when I want...') are supported by the retrieved List of last words text, including the date and circumstance of declining surgery. However, the answer adds a material claim not in any source: that 'It is widely reported in other sources that he may have spoken final words in German to a nurse...' This detail about a German-speaking nurse who couldn't understand him is introduced beyond the retrieved text, and the answer itself acknowledges Wikipedia doesn't include it. This is an unsupported material claim. Also a minor date discrepancy: answer says words spoken April 17 (day before death April 18), while source lists the death entry as 18 April, which is consistent. The German-nurse claim makes this unsupported."
+        },
+        "behavior": {
+          "kind": "judge",
+          "applicable": true,
+          "score": 2.0,
+          "passed": true,
+          "rationale": "The question is a partial-findability case: Wikipedia documents the quote he said the day before declining surgery, but his actual final words (spoken in German to a nurse) are unknown/unrecorded. The answer reports the documented quote accurately and explicitly flags that the German final words to the nurse were not recorded or preserved. This answers the findable part and clearly notes the unavailable part, matching ideal handling."
+        }
+      }
+    },
+    {
+      "id": "pushpavanam_village_avg_age",
+      "question": "Tell me more about Pushpavanam village and tell me the average age of people in it.",
+      "category": "found_but_insufficient",
+      "expected_searches": 1,
+      "reference_answer": "Pushpavanam is a village in Tamil Nadu, India; Wikipedia describes the village but does not give the average age of its residents.",
+      "expected_behavior": "Share what Wikipedia has about the village, and explicitly state that the average age of residents is not available in Wikipedia — do not fabricate a figure.",
+      "gold_facts": [
+        "village",
+        "Vedaranyam",
+        "Nagapattinam"
+      ],
+      "notes": "Part answerable (village description), part not (average age).",
+      "answer": {
+        "text": "Here is what Wikipedia says about Pushpavanam village:\n\nPushpavanam is a village located in the Vedaranyam subdistrict of Nagapattinam District in the Indian state of Tamil Nadu. It sits on the coast of the Bay of Bengal, about 10.3 km north of Vedaranyam taluk, 34.8 km south of Nagapattinam, and 291 km from Chennai. Geographically, it is effectively situated on an island, with the Vedaranyam Canal (Uppanar River) to the southwest and the Vettar River to the north.\n\nThe name \"Pushpavanam\" comes from Sanskrit, where \"pushpam\" means flower and \"vanam\" means forest. One theory is that the name derives from people carrying flowers to the village from the Vedaranyeswarar temple during puja. Another theory links it to the Mahabharata, suggesting that Draupadi brought flowers to this village.\n\nThe village is approximately 1,000 years old. As of the 2011 census, it had a population of 6,705 people living in 1,799 households. It has active Hindu, Islamic, and Christian communities. The local economy is driven by agriculture (including coconut, mango, cashew nut, rice, peanuts, and Gloriosa superba) and fishing. In terms of education, the village is served by several State Board schools, including a Government Higher Secondary School and multiple primary schools.\n\nRegarding the average age of people in Pushpavanam, this information is not available on Wikipedia. The Wikipedia article on Pushpavanam only provides total population and household data from the 2011 census, and does not mention average age. You may need to consult official Indian census records or local government sources for that specific detail.\n\nSources:\nPushpavanam - https://en.wikipedia.org/wiki/Pushpavanam",
+        "citations": [
+          {
+            "title": "Pushpavanam",
+            "url": "https://en.wikipedia.org/wiki/Pushpavanam"
+          }
+        ],
+        "used_search": true,
+        "tool_calls": 7,
+        "searches": 1
+      },
+      "graders": {
+        "search_behavior": {
+          "kind": "code",
+          "applicable": true,
+          "score": null,
+          "passed": true,
+          "rationale": "Expected ≥ 1 search(es); agent ran 1."
+        },
+        "accuracy": {
+          "kind": "code",
+          "applicable": true,
+          "score": null,
+          "passed": true,
+          "rationale": "All 3 expected fact(s) present."
+        },
+        "citations": {
+          "kind": "code",
+          "applicable": true,
+          "score": null,
+          "passed": true,
+          "rationale": "1 citation(s) present; all URLs resolve."
+        },
+        "correctness": {
+          "kind": "judge",
+          "applicable": true,
+          "score": 2.0,
+          "passed": true,
+          "rationale": "The answer correctly identifies Pushpavanam as a village in Tamil Nadu, India, and correctly states that the average age information is not available on Wikipedia, matching the reference answer's key facts."
+        },
+        "faithfulness": {
+          "kind": "judge",
+          "applicable": true,
+          "score": 2.0,
+          "passed": true,
+          "rationale": "All factual claims are supported by the retrieved Pushpavanam sections: geography (distances, rivers, island), etymology (Sanskrit meaning, flower theories, Mahabharata/Draupadi), history (1000 years old), demographics (6,705 population, 1,799 households, religious communities), economy (crops and fishing), and education (State Board schools including Govt. Higher Secondary School and primary schools). The answer also correctly notes that average age is not in the article, which matches the Demographics section providing only population and household data."
+        },
+        "behavior": {
+          "kind": "judge",
+          "applicable": true,
+          "score": 2.0,
+          "passed": true,
+          "rationale": "The answer shares substantial grounded detail about the village from Wikipedia and explicitly states the average age is not available there, without fabricating a figure, while suggesting alternative sources. This is the ideal honest-scoping handling."
+        }
+      }
+    }
+  ]
+}

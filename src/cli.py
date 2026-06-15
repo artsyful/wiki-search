@@ -28,7 +28,8 @@ DEMO_QUESTIONS = [
 
 def _render_answer(console: Console, answer: AgentAnswer) -> None:
     console.print("[bold]A:[/bold] ", end="")
-    console.print(answer.text or "(no answer)")
+    # markup/highlight off so the answer prints as plain text (no rich auto-coloring of numbers).
+    console.print(answer.text or "(no answer)", markup=False, highlight=False)
     count = len(answer.citations)
     if answer.used_search and count:
         plural = "s" if count != 1 else ""
@@ -48,13 +49,13 @@ def _ask(console: Console, agent: WikiAgent, question: str) -> None:
 
 
 def _run_demo(console: Console, agent: WikiAgent) -> None:
-    console.print("[bold]Demo mode[/bold] — running sample questions.\n")
+    console.print("[bold]Demo mode[/bold]: running sample questions.\n")
     for question in DEMO_QUESTIONS:
         _ask(console, agent, question)
 
 
 def _run_interactive(console: Console, agent: WikiAgent) -> None:
-    console.print("[bold]Wikipedia Q&A[/bold] — ask a question, or 'exit' to quit.\n")
+    console.print("[bold]Wikipedia Q&A[/bold]. Ask a question, or 'exit' to quit.\n")
     while True:
         try:
             question = console.input("[bold green]Ask a question ▷ [/bold green]").strip()
@@ -76,7 +77,7 @@ def main() -> None:
     parser.add_argument("--model", default=DEFAULT_MODEL, help="Anthropic model id.")
     args = parser.parse_args()
 
-    console = Console()
+    console = Console(highlight=False)  # no auto-coloring of numbers/quoted text
     if not os.environ.get("ANTHROPIC_API_KEY"):
         console.print(
             "[red]ANTHROPIC_API_KEY is not set.[/red] Copy .env.example to .env and add your key, "

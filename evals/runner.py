@@ -159,10 +159,16 @@ def main() -> None:
     parser = argparse.ArgumentParser(description="Run the Wikipedia agent eval suite.")
     parser.add_argument("--limit", type=int, default=None, help="Run only the first N cases.")
     parser.add_argument("--ids", default=None, help="Comma-separated case ids to run (subset).")
+    parser.add_argument("--list", action="store_true", help="List case ids + questions, then exit.")
     parser.add_argument("--model", default=DEFAULT_MODEL, help="Agent model id.")
     args = parser.parse_args()
 
-    console = Console()
+    console = Console(highlight=False)
+    if args.list:
+        for case in CASES:
+            console.print(f"[bold]{case.id}[/bold]  [{case.category}]\n    {case.question}")
+        return
+
     if not os.environ.get("ANTHROPIC_API_KEY"):
         console.print("[red]ANTHROPIC_API_KEY is not set.[/red] Copy .env.example to .env or export it.")
         sys.exit(1)

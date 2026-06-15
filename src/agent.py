@@ -17,9 +17,11 @@ from .wiki_client import fetch_section, search_wikipedia
 
 MAX_TOOL_CALLS = 5
 MAX_TOKENS = 8000
-_EMPTY_FALLBACK = (
-    "I couldn't produce a grounded answer — repeated Wikipedia retrieval errors prevented me "
-    "from confirming this. I'm not able to find it in Wikipedia right now."
+_EMPTY_FALLBACK = "I wasn't able to put together a grounded answer for this from Wikipedia."
+_FINAL_ANSWER_NUDGE = (
+    "You have reached the tool-use limit, so you cannot search again. Give your final answer now "
+    "using only the information you have already retrieved. Do not describe further searches you "
+    "would do; if you could not find something, say plainly that you could not find it in Wikipedia."
 )
 
 ProgressFn = Callable[[str], None] | None
@@ -114,7 +116,13 @@ class WikiAgent:
                 "messages": messages,
             }
             if force_final:
+                # Force a text answer and drop thinking, so the whole token budget goes to the
+                # answer (adaptive thinking on this long final turn could starve it to empty), and
+                # nudge the model to commit to an answer from what it has rather than narrate more
+                # searching.
                 request["tool_choice"] = {"type": "none"}
+                request["thinking"] = {"type": "disabled"}
+                request["messages"] = messages + [{"role": "user", "content": _FINAL_ANSWER_NUDGE}]
 
             response = self.client.messages.create(**request)
             tool_uses = [b for b in response.content if b.type == "tool_use"]

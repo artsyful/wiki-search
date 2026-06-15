@@ -22,6 +22,10 @@ UNANSWERABLE = "unanswerable"
 INSUFFICIENT = "found_but_insufficient"
 TEMPORAL_RECENT = "temporal_recent"
 TEMPORAL_PAST = "temporal_past"
+LIST = "list_enumeration"
+SUBJECTIVE = "subjective"
+SPECULATIVE = "speculative"
+META = "meta"
 
 # Categories for which the Correctness judge applies (a real answer is expected).
 FACTUAL_ANSWER_CATEGORIES = {
@@ -32,6 +36,7 @@ FACTUAL_ANSWER_CATEGORIES = {
     FALSE_PREMISE,
     INSUFFICIENT,
     TEMPORAL_PAST,
+    LIST,
 }
 
 CATEGORY_DESCRIPTIONS = {
@@ -45,6 +50,10 @@ CATEGORY_DESCRIPTIONS = {
     INSUFFICIENT: "Wikipedia covers the topic but lacks the precise fact; answer the part it has and flag the gap.",
     TEMPORAL_RECENT: "Very recent / post-training-cutoff event; ground in Wikipedia or abstain — never answer from memory.",
     TEMPORAL_PAST: "A fixed historical fact that cannot change; retrieve and cite.",
+    LIST: "Exhaustive closed-set enumeration; graded on all-of completeness and no over-inclusion.",
+    SUBJECTIVE: "Opinion question with no factual answer; explain that and don't assert a pick as fact.",
+    SPECULATIVE: "Future/forecast question Wikipedia can't supply; don't fabricate a prediction.",
+    META: "Self-referential ('what can you do?'); answer directly without searching.",
 }
 
 
@@ -158,7 +167,7 @@ CASES: list[EvalCase] = [
             "Retrieve each country's population from its article and sum them, grounded in the "
             "sources; cite each."
         ),
-        gold_facts=[],
+        gold_facts=["Estonia", "Latvia", "Lithuania"],
         notes=(
             "Multi-hop that aggregates (sums) data across several source articles. "
             "TODO: populations change over time → reference is brittle; replace with a stable "
@@ -194,6 +203,7 @@ CASES: list[EvalCase] = [
             "Answer the most likely sense (e.g. the planet) fully and cite it, then briefly note "
             "the other senses (element, Roman god)."
         ),
+        gold_facts=["Solar System", "planet"],
     ),
     EvalCase(
         id="einstein_two_nobels",
@@ -260,6 +270,7 @@ CASES: list[EvalCase] = [
             "Report what Wikipedia says (his final words are unknown/unrecorded) — answer the "
             "known part and explicitly flag that the exact words are not available."
         ),
+        gold_facts=["I want to go when I want"],
     ),
     EvalCase(
         id="pushpavanam_village_avg_age",
@@ -274,6 +285,56 @@ CASES: list[EvalCase] = [
             "Share what Wikipedia has about the village, and explicitly state that the average "
             "age of residents is not available in Wikipedia — do not fabricate a figure."
         ),
+        gold_facts=["village", "Vedaranyam", "Nagapattinam"],
         notes="Part answerable (village description), part not (average age).",
+    ),
+    EvalCase(
+        id="list_switzerland_borders",
+        question="Which countries share a land border with Switzerland?",
+        category=LIST,
+        expected_searches=1,
+        reference_answer="Switzerland borders Germany, France, Italy, Austria, and Liechtenstein.",
+        expected_behavior=(
+            "Enumerate all bordering countries completely and cite; do not omit any (Liechtenstein "
+            "is the easy miss) or include non-bordering countries."
+        ),
+        gold_facts=["Germany", "France", "Italy", "Austria", "Liechtenstein"],
+        notes="Closed-set enumeration; tests all-of completeness and resistance to over-including.",
+    ),
+    EvalCase(
+        id="subjective_best_language",
+        question="What is the best programming language?",
+        category=SUBJECTIVE,
+        expected_searches=0,
+        reference_answer="",
+        expected_behavior=(
+            "Explain there is no single factual 'best' (it depends on use case); do not assert an "
+            "opinion as fact. Answer without searching and note Wikipedia has no factual answer."
+        ),
+        notes="Subjective abstention: real-sounding question with no factual answer.",
+    ),
+    EvalCase(
+        id="speculative_london_rain",
+        question="Will it rain in London next Tuesday?",
+        category=SPECULATIVE,
+        expected_searches=0,
+        reference_answer="",
+        expected_behavior=(
+            "Explain this is a future forecast Wikipedia cannot provide; do not fabricate a "
+            "prediction. Answer without searching and say it is not something Wikipedia can answer."
+        ),
+        notes="Future/speculative abstention.",
+    ),
+    EvalCase(
+        id="meta_capabilities",
+        question="What can you do?",
+        category=META,
+        expected_searches=0,
+        reference_answer="",
+        expected_behavior=(
+            "Describe its own capabilities (answering questions grounded in Wikipedia) directly "
+            "without searching, and note this is not a Wikipedia lookup."
+        ),
+        notes="Self-referential / meta: a no-search path distinct from arithmetic/translation.",
     ),
 ]

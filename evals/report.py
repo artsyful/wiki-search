@@ -1,8 +1,8 @@
 """Report writers: machine-readable JSON + a self-contained offline HTML report.
 
 Both consume the same plain-dict `report` structure the runner assembles, so this module
-has no dependency on the grader/case types. The HTML uses only inline CSS + CSS bar charts
-(no external CDN) so it renders offline. See docs/EVALS.md → Reporting.
+has no dependency on the grader/case types. The HTML uses only inline CSS (no external CDN)
+so it renders offline, and supports light/dark via CSS variables. See docs/EVALS.md.
 """
 
 from __future__ import annotations
@@ -18,7 +18,11 @@ from .graders import (
     DIMENSIONS,
     FAITHFULNESS,
     JUDGE_DIMENSIONS,
+    JUDGE_SCORE_LABELS,
 )
+
+# Dimensions surfaced as headline summary cards (the quality story).
+SUMMARY_CARDS = [CORRECTNESS, FAITHFULNESS, "behavior", "citations"]
 
 
 def write_json(path: str, report: dict) -> None:
@@ -30,308 +34,341 @@ def _esc(value: object) -> str:
     return html.escape(str(value))
 
 
-def _verdict(grader: dict) -> str:
+def _label(dim: str) -> str:
+    return dim.replace("_", " ")
+
+
+def _verdict(grader: dict, dim: str) -> str:
     if not grader["applicable"]:
         return "n/a"
     if grader["kind"] == "code":
         return "pass" if grader["passed"] else "fail"
-    return str(int(grader["score"]))
+    return JUDGE_SCORE_LABELS[dim][int(grader["score"])]
 
 
-def _score_badge(grader: dict) -> str:
-    if not grader["applicable"]:
-        return '<span class="badge na">n/a</span>'
-    if grader["kind"] == "code":
-        cls = "good" if grader["passed"] else "bad"
-        return f'<span class="badge {cls}">{"pass" if grader["passed"] else "fail"}</span>'
-    score = int(grader["score"])
-    cls = {2: "good", 1: "mid", 0: "bad"}[score]
-    return f'<span class="badge {cls}">{score}</span>'
+# --------------------------------------------------------------------------- counts
+
+
+def _counts(cases: list[dict], dim: str, kind: str) -> dict[str, int]:
+    out: dict[str, int] = {}
+    for case in cases:
+        g = case["graders"][dim]
+        if not g["applicable"]:
+            key = "na"
+        elif kind == "code":
+            key = "pass" if g["passed"] else "fail"
+        else:
+            key = f"s{int(g['score'])}"
+        out[key] = out.get(key, 0) + 1
+    return out
+
+
+def _track(segments: list[tuple[int, str]], total: int) -> str:
+    """Horizontal stacked bar; segments are (count, css-var). Widths cover applicable total."""
+    if total == 0:
+        return '<span class="er-track"></span>'
+    cells = "".join(
+        f'<span style="width:{n / total * 100:.1f}%;background:var({var})"></span>'
+        for n, var in segments
+        if n
+    )
+    return f'<span class="er-track">{cells}</span>'
 
 
 # --------------------------------------------------------------------------- summary cards
 
 
-def _card(dim: str, agg: dict) -> str:
-    pass_pct = f"{agg['pass_rate'] * 100:.0f}%"
-    if "mean" in agg:  # judge dimension
-        sub = f"mean {agg['mean']:.2f}/2 · n={agg['n']}"
-    else:  # code dimension
-        sub = f"n={agg['n']}"
+def _card(label: str, pct: str, sub: str) -> str:
     return (
-        f'<div class="card"><div class="card-title">{_esc(dim)}</div>'
-        f'<div class="card-num">{pass_pct}</div><div class="card-sub">{sub}</div></div>'
+        '<div style="background:var(--color-background-secondary);border-radius:8px;padding:.8rem 1rem">'
+        f'<div style="font-size:12px;color:var(--color-text-secondary)">{_esc(label)}</div>'
+        f'<div style="font-size:24px;font-weight:500">{pct}</div>'
+        f'<div style="font-size:11px;color:var(--color-text-tertiary)">{sub}</div></div>'
     )
-
-
-def _spotlight(report: dict) -> str:
-    """Surface failing cases and the 'correct answer but ungrounded' pattern up top."""
-    failing: list[tuple[str, str, list[str]]] = []
-    ungrounded: list[tuple[str, str]] = []
-    for case in report["cases"]:
-        graders = case["graders"]
-        bad = []
-        for dim in DIMENSIONS:
-            g = graders[dim]
-            if not g["applicable"]:
-                continue
-            if g["kind"] == "code" and not g["passed"]:
-                bad.append(f"{dim}: fail")
-            elif g["kind"] == "judge" and g["score"] < 2:
-                bad.append(f"{dim}: {int(g['score'])}")
-        if bad:
-            failing.append((case["id"], case["category"], bad))
-        corr, faith = graders[CORRECTNESS], graders[FAITHFULNESS]
-        if corr["applicable"] and faith["applicable"] and corr["score"] == 2 and faith["score"] == 0:
-            ungrounded.append((case["id"], faith["rationale"]))
-
-    if not failing and not ungrounded:
-        return '<details class="spotlight"><summary>✓ No failures</summary></details>'
-
-    parts = ""
-    if ungrounded:
-        items = "".join(
-            f"<li><b>{_esc(cid)}</b> — correct answer but ungrounded: {_esc(r)}</li>"
-            for cid, r in ungrounded
-        )
-        parts += (
-            '<div class="spot-h">Right answer, wrong grounding (correctness 2 · faithfulness 0)</div>'
-            f"<ul>{items}</ul>"
-        )
-    if failing:
-        items = "".join(
-            f'<li><b>{_esc(cid)}</b> <span class="ccat">[{_esc(cat)}]</span> — {_esc(", ".join(bad))}</li>'
-            for cid, cat, bad in failing
-        )
-        parts += f'<div class="spot-h">Cases needing attention</div><ul>{items}</ul>'
-    return '<details open class="spotlight"><summary>⚠ Needs attention</summary>' + parts + "</details>"
 
 
 def _summary_cards(report: dict) -> str:
-    dims = report["aggregates"]["dimensions"]
-    code_row = "".join(_card(d, dims[d]) for d in CODE_DIMENSIONS)
-    judge_row = "".join(_card(d, dims[d]) for d in JUDGE_DIMENSIONS)
-    return (
-        '<div class="card-row-label">Code graders</div>'
-        f'<div class="cards">{code_row}</div>'
-        '<div class="card-row-label">LLM judges</div>'
-        f'<div class="cards">{judge_row}</div>'
-    )
-
-
-# --------------------------------------------------------------------------- stacked charts
-
-# Segment order + colour class per outcome.
-_CODE_SEGMENTS = [("pass", "c-green"), ("fail", "c-red"), ("na", "c-grey")]
-_JUDGE_SEGMENTS = [("s2", "c-green"), ("s1", "c-yellow"), ("s0", "c-red"), ("na", "c-grey")]
-
-
-def _dim_distribution(cases: list[dict], dim: str, is_judge: bool) -> dict[str, int]:
-    counts: dict[str, int] = {}
-    for case in cases:
-        grader = case["graders"][dim]
-        if not grader["applicable"]:
-            key = "na"
-        elif is_judge:
-            key = f"s{int(grader['score'])}"
-        else:
-            key = "pass" if grader["passed"] else "fail"
-        counts[key] = counts.get(key, 0) + 1
-    return counts
-
-
-def _cat_distribution(cases: list[dict], category: str) -> dict[str, int]:
-    counts: dict[str, int] = {}
-    for case in cases:
-        if case["category"] != category:
-            continue
-        for dim in DIMENSIONS:
-            grader = case["graders"][dim]
-            if not grader["applicable"]:
-                key = "na"
-            else:
-                key = "pass" if grader["passed"] else "fail"
-            counts[key] = counts.get(key, 0) + 1
-    return counts
-
-
-def _stacked_bar(counts: dict[str, int], segments: list[tuple[str, str]]) -> str:
-    total = sum(counts.values()) or 1
-    cells = ""
-    for key, css in segments:
-        n = counts.get(key, 0)
-        if n:
-            cells += f'<div class="seg {css}" style="width:{n / total * 100:.1f}%" title="{key}={n}"></div>'
-    return f'<div class="stack">{cells}</div>'
-
-
-def _chart_dimensions(report: dict) -> str:
     cases = report["cases"]
-    dims = report["aggregates"]["dimensions"]
-    rows = ""
-    for dim in DIMENSIONS:
+    cards = ""
+    for dim in SUMMARY_CARDS:
+        agg = report["aggregates"]["dimensions"][dim]
         is_judge = dim in JUDGE_DIMENSIONS
-        segments = _JUDGE_SEGMENTS if is_judge else _CODE_SEGMENTS
-        bar = _stacked_bar(_dim_distribution(cases, dim, is_judge), segments)
-        agg = dims[dim]
-        label = f"{agg['pass_rate'] * 100:.0f}% pass · n={agg['n']}"
-        rows += (
-            f'<tr><td class="chart-name">{_esc(dim)}</td>'
-            f'<td class="chart-bar">{bar}</td><td class="chart-num">{label}</td></tr>'
-        )
-    return f'<h3>By dimension</h3><table class="chart">{rows}</table>'
-
-
-def _chart_categories(report: dict) -> str:
-    cases = report["cases"]
-    cats = report["aggregates"]["categories"]
-    rows = ""
-    for cat, agg in cats.items():
-        bar = _stacked_bar(_cat_distribution(cases, cat), _CODE_SEGMENTS)
-        label = f"{agg['pass_rate'] * 100:.0f}% pass · n={agg['n']}"
-        rows += (
-            f'<tr><td class="chart-name">{_esc(cat)}</td>'
-            f'<td class="chart-bar">{bar}</td><td class="chart-num">{label}</td></tr>'
-        )
-    return f'<h3>By category</h3><table class="chart">{rows}</table>'
+        c = _counts(cases, dim, "judge" if is_judge else "code")
+        if is_judge:
+            total = c.get("s2", 0) + c.get("s1", 0) + c.get("s0", 0)
+            passed = c.get("s2", 0) + c.get("s1", 0)
+            sub = f"{passed} / {total} · mean {agg['mean']:.2f}/2"
+        else:
+            total = c.get("pass", 0) + c.get("fail", 0)
+            passed = c.get("pass", 0)
+            sub = f"{passed} / {total}"
+        pct = f"{(passed / total * 100):.0f}%" if total else "—"
+        cards += _card(_label(dim), pct, sub)
+    return (
+        '<div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(120px,1fr));'
+        f'gap:12px;margin:1rem 0">{cards}</div>'
+    )
 
 
 def _legend() -> str:
+    sw = "width:10px;height:10px;border-radius:2px"
     return (
-        '<div class="legend">'
-        '<span class="lg"><i class="seg c-green"></i> pass / score 2</span>'
-        '<span class="lg"><i class="seg c-yellow"></i> score 1</span>'
-        '<span class="lg"><i class="seg c-red"></i> fail / score 0</span>'
-        '<span class="lg"><i class="seg c-grey"></i> n/a</span></div>'
+        '<div style="display:flex;gap:16px;font-size:11px;color:var(--color-text-secondary);'
+        'margin:1rem 0 6px;flex-wrap:wrap">'
+        f'<span style="display:flex;align-items:center;gap:5px"><span style="{sw};background:var(--color-text-success)"></span>pass / top</span>'
+        f'<span style="display:flex;align-items:center;gap:5px"><span style="{sw};background:var(--color-text-warning)"></span>partial</span>'
+        f'<span style="display:flex;align-items:center;gap:5px"><span style="{sw};background:var(--color-text-danger)"></span>fail / bottom</span>'
+        '<span style="color:var(--color-text-tertiary)">bars cover applicable cases · n/a shown beside the count</span></div>'
     )
 
 
-# --------------------------------------------------------------------------- definitions
+# --------------------------------------------------------------------------- grader bars + defs
 
 
-def _definitions() -> str:
-    dim_items = "".join(
-        f"<li><b>{_esc(d)}</b> — {_esc(desc)}</li>" for d, desc in DIMENSION_DESCRIPTIONS.items()
-    )
-    cat_items = "".join(
-        f"<li><b>{_esc(c)}</b> — {_esc(desc)}</li>" for c, desc in CATEGORY_DESCRIPTIONS.items()
-    )
+def _cnt_text(passed: int, total: int, na: int) -> str:
+    base = f"{passed} / {total}" if total else "—"
+    return base + (f' <span style="opacity:.6">· {na} n/a</span>' if na else "")
+
+
+def _bar_row(dim: str, track: str, cnt: str) -> str:
     return (
-        "<details><summary>Dimension / grader definitions</summary><ul>"
-        + dim_items
-        + "</ul></details>"
-        "<details><summary>Case category definitions</summary><ul>"
-        + cat_items
-        + "</ul></details>"
+        f'<div class="er-row"><span class="er-lab">{_esc(_label(dim))}</span>{track}'
+        f'<span class="er-cnt">{cnt}</span></div>'
+    )
+
+
+def _grader_bars(report: dict) -> str:
+    cases = report["cases"]
+    code_rows = ""
+    for dim in CODE_DIMENSIONS:
+        c = _counts(cases, dim, "code")
+        p, f, na = c.get("pass", 0), c.get("fail", 0), c.get("na", 0)
+        track = _track([(p, "--color-text-success"), (f, "--color-text-danger")], p + f)
+        code_rows += _bar_row(dim, track, _cnt_text(p, p + f, na))
+
+    judge_rows = ""
+    for dim in JUDGE_DIMENSIONS:
+        c = _counts(cases, dim, "judge")
+        s2, s1, s0, na = c.get("s2", 0), c.get("s1", 0), c.get("s0", 0), c.get("na", 0)
+        total = s2 + s1 + s0
+        track = _track(
+            [(s2, "--color-text-success"), (s1, "--color-text-warning"), (s0, "--color-text-danger")],
+            total,
+        )
+        judge_rows += _bar_row(dim, track, _cnt_text(s2 + s1, total, na))
+
+    defs = ""
+    for dim in DIMENSIONS:
+        kind = "judge" if dim in JUDGE_DIMENSIONS else "code"
+        defs += (
+            '<div style="margin:6px 0"><span style="font-weight:500">'
+            f'{_esc(dim)}</span> <span style="font-size:10px;padding:1px 6px;border-radius:4px;'
+            'background:var(--color-background-secondary);color:var(--color-text-tertiary)">'
+            f'{kind}</span><br><span style="color:var(--color-text-secondary)">'
+            f'{_esc(DIMENSION_DESCRIPTIONS[dim])}</span></div>'
+        )
+
+    return (
+        '<div class="er-card">'
+        '<p class="er-sec">Code graders <span style="color:var(--color-text-tertiary)">(deterministic)</span></p>'
+        f"{code_rows}"
+        '<p class="er-sec" style="margin-top:1.25rem">Judge <span style="color:var(--color-text-tertiary)">(semantic, 0–2)</span></p>'
+        f"{judge_rows}"
+        '<details style="margin-top:1.1rem;border-top:0.5px solid var(--color-border-tertiary);padding-top:10px">'
+        '<summary style="font-size:12px;color:var(--color-text-secondary);font-weight:500">Definitions — graders</summary>'
+        f'<div style="margin-top:10px;font-size:12px;line-height:1.55">{defs}</div></details></div>'
     )
 
 
 # --------------------------------------------------------------------------- per-case table
 
 
-def _case_table(report: dict) -> str:
-    rows = ""
-    for case in report["cases"]:
-        graders = case["graders"]
-        cells = "".join(f"<td>{_score_badge(graders[d])}</td>" for d in DIMENSIONS)
-        rows += (
-            f'<tr><td class="id-cell"><div class="cid">{_esc(case["id"])}</div>'
-            f'<div class="ccat">{_esc(case["category"])}</div></td>'
-            f"{cells}<td>{case['answer']['searches']}</td></tr>"
-        )
-    header = "".join(f"<th>{_esc(d)}</th>" for d in DIMENSIONS)
+def _cell(grader: dict, dim: str) -> str:
+    if not grader["applicable"]:
+        return '<span class="er-pill" style="color:var(--color-text-tertiary)">n/a</span>'
+    if grader["kind"] == "code":
+        if grader["passed"]:
+            return '<span style="color:var(--color-text-success)">✓</span>'
+        return '<span style="color:var(--color-text-danger)">✗</span>'
+    score = int(grader["score"])
+    tone = {2: "success", 1: "warning", 0: "danger"}[score]
+    label = JUDGE_SCORE_LABELS[dim][score]
     return (
-        '<table class="cases"><thead><tr><th>id</th>'
-        f"{header}<th>searches</th></tr></thead><tbody>{rows}</tbody></table>"
+        f'<span class="er-pill" style="background:var(--color-background-{tone});'
+        f'color:var(--color-text-{tone})">{_esc(label)}</span>'
     )
 
 
-# --------------------------------------------------------------------------- bottom collapsibles
+def _category_defs(report: dict) -> str:
+    present = {c["category"] for c in report["cases"]}
+    items = ""
+    for cat, desc in CATEGORY_DESCRIPTIONS.items():
+        if cat not in present:
+            continue
+        items += (
+            '<div style="margin:6px 0"><span style="font-weight:500;font-family:var(--font-mono);'
+            f'font-size:11px">{_esc(cat)}</span> — <span style="color:var(--color-text-secondary)">'
+            f'{_esc(desc)}</span></div>'
+        )
+    return (
+        '<details style="margin:0 0 12px"><summary style="font-size:12px;'
+        'color:var(--color-text-secondary);font-weight:500">Definitions — categories</summary>'
+        f'<div style="margin-top:10px;font-size:12px;line-height:1.55">{items}</div></details>'
+    )
 
 
-def _detailed_grading(report: dict) -> str:
+def _case_table(report: dict) -> str:
+    cols = '<col style="width:22%">' + "".join(
+        f'<col style="width:{78 / len(DIMENSIONS):.1f}%">' for _ in DIMENSIONS
+    )
+    header = '<th style="text-align:left">case</th>' + "".join(
+        f"<th>{_esc(_label(d))}</th>" for d in DIMENSIONS
+    )
+    rows = ""
+    for case in report["cases"]:
+        cells = "".join(f"<td>{_cell(case['graders'][d], d)}</td>" for d in DIMENSIONS)
+        rows += (
+            '<tr><td style="text-align:left;overflow:hidden">'
+            f'<div style="font-family:var(--font-mono);font-size:11px">{_esc(case["id"])}</div>'
+            f'<div style="font-size:10px;color:var(--color-text-tertiary)">{_esc(case["category"])}</div></td>'
+            f"{cells}</tr>"
+        )
+    return (
+        '<div class="er-card"><p class="er-sec">Per-case results</p>'
+        + _category_defs(report)
+        + f'<table class="er-tbl"><colgroup>{cols}</colgroup>'
+        + f"<thead><tr>{header}</tr></thead><tbody>{rows}</tbody></table></div>"
+    )
+
+
+# --------------------------------------------------------------------------- spotlight (drill-down)
+
+
+def _spotlight(report: dict) -> str:
+    failing: list[tuple[str, str, list[str]]] = []
+    ungrounded: list[tuple[str, str]] = []
+    for case in report["cases"]:
+        g = case["graders"]
+        bad = []
+        for dim in DIMENSIONS:
+            x = g[dim]
+            if not x["applicable"]:
+                continue
+            if x["kind"] == "code" and not x["passed"]:
+                bad.append(f"{dim}: fail")
+            elif x["kind"] == "judge" and x["score"] < 2:
+                bad.append(f"{dim}: {_verdict(x, dim)}")
+        if bad:
+            failing.append((case["id"], case["category"], bad))
+        corr, faith = g[CORRECTNESS], g[FAITHFULNESS]
+        if corr["applicable"] and faith["applicable"] and corr["score"] == 2 and faith["score"] == 0:
+            ungrounded.append((case["id"], faith["rationale"]))
+
+    if not failing and not ungrounded:
+        return '<div class="er-card"><p class="er-sec">Needs attention</p><div style="font-size:12px;color:var(--color-text-success)">No failures.</div></div>'
+
+    body = ""
+    if ungrounded:
+        items = "".join(
+            f'<li><b>{_esc(cid)}</b> — correct answer but ungrounded: {_esc(r)}</li>'
+            for cid, r in ungrounded
+        )
+        body += '<div class="spot-h">Right answer, wrong grounding (correctness 2 · faithfulness 0)</div><ul>' + items + "</ul>"
+    if failing:
+        items = "".join(
+            f'<li><b>{_esc(cid)}</b> <span style="color:var(--color-text-tertiary)">[{_esc(cat)}]</span> — {_esc(", ".join(bad))}</li>'
+            for cid, cat, bad in failing
+        )
+        body += '<div class="spot-h">Cases needing attention</div><ul>' + items + "</ul>"
+    return f'<div class="er-card spotlight"><p class="er-sec">Needs attention</p>{body}</div>'
+
+
+# --------------------------------------------------------------------------- detailed Q&A + grading
+
+
+def _detailed_results(report: dict) -> str:
     blocks = ""
     for case in report["cases"]:
-        graders = case["graders"]
-        items = "".join(
-            f'<li><b>{_esc(d)}</b> [{_verdict(graders[d])}]: {_esc(graders[d]["rationale"])}</li>'
+        a = case["answer"]
+        g = case["graders"]
+        cites = "".join(
+            f'<li><a href="{_esc(c["url"])}">{_esc(c["title"])}</a></li>' for c in a["citations"]
+        )
+        cites_block = f'<ul class="cites">{cites}</ul>' if cites else ""
+        grades = "".join(
+            f'<li><b>{_esc(d)}</b> [{_esc(_verdict(g[d], d))}]: {_esc(g[d]["rationale"])}</li>'
             for d in DIMENSIONS
         )
         blocks += (
-            f'<div class="grade-block"><div class="gb-id">{_esc(case["id"])} '
-            f'[{_esc(case["category"])}]</div><ul>{items}</ul></div>'
+            '<div style="padding:12px 0;border-top:0.5px solid var(--color-border-tertiary)">'
+            f'<div style="font-family:var(--font-mono);font-size:11px">{_esc(case["id"])} '
+            f'<span style="color:var(--color-text-tertiary)">· {_esc(case["category"])}</span></div>'
+            f'<div style="font-size:13px;margin:6px 0"><span style="color:var(--color-text-tertiary)">Q:</span> {_esc(case["question"])}</div>'
+            f'<div style="font-size:13px;margin:6px 0;white-space:pre-wrap"><span style="color:var(--color-text-tertiary)">A:</span> {_esc(a["text"])}</div>'
+            f"{cites_block}"
+            f'<div class="cb-grades"><b>Grading</b><ul>{grades}</ul></div></div>'
         )
-    return "<details><summary>Detailed grading (rationales)</summary>" + blocks + "</details>"
-
-
-def _transcript(report: dict) -> str:
-    blocks = ""
-    for case in report["cases"]:
-        answer = case["answer"]
-        cites = "".join(
-            f'<li><a href="{_esc(c["url"])}">{_esc(c["title"])}</a></li>' for c in answer["citations"]
-        )
-        cites_block = f"<ul class='cites'>{cites}</ul>" if cites else ""
-        blocks += (
-            f'<div class="transcript"><div class="t-q">Q [{_esc(case["category"])}]: '
-            f'{_esc(case["question"])}</div>'
-            f'<div class="t-a">{_esc(answer["text"])}</div>{cites_block}</div>'
-        )
-    return "<details><summary>Full Q&amp;A transcript</summary>" + blocks + "</details>"
+    return (
+        '<div class="er-card"><details><summary style="font-size:13px;font-weight:500;'
+        'color:var(--color-text-secondary)">Detailed results — answer + grading, all '
+        f'{report["meta"]["n_cases"]} cases</summary><div style="margin-top:4px">{blocks}</div></details></div>'
+    )
 
 
 _CSS = """
-body{font:14px/1.5 -apple-system,Segoe UI,Roboto,sans-serif;margin:2rem auto;max-width:1100px;color:#1a1a1a;padding:0 1rem}
-h1{margin-bottom:.2rem}h3{margin:1.2rem 0 .4rem}.meta{color:#666;margin-bottom:1.5rem}
-.card-row-label{font-size:12px;font-weight:600;color:#888;text-transform:uppercase;letter-spacing:.04em;margin:.6rem 0 .2rem}
-.cards{display:flex;flex-wrap:wrap;gap:.75rem}
-.card{flex:1;min-width:150px;border:1px solid #e3e3e3;border-radius:10px;padding:.7rem 1rem;background:#fafafa}
-.card-title{font-size:12px;color:#666;text-transform:capitalize}
-.card-num{font-size:2rem;font-weight:700}
-.card-sub{font-size:12px;color:#777}
-table{border-collapse:collapse;width:100%;margin:.3rem 0}
-.chart td{padding:.18rem .5rem;vertical-align:middle}.chart-name{width:210px;text-transform:capitalize}
-.chart-num{font-size:12px;color:#555;white-space:nowrap}
-.stack{display:flex;width:240px;height:14px;border-radius:4px;overflow:hidden;background:#eee}
-.seg{height:100%}.c-green{background:#2e8b57}.c-yellow{background:#c89010}.c-red{background:#c0392b}.c-grey{background:#bbb}
-.legend{margin:.4rem 0;font-size:12px;color:#555}.legend .lg{margin-right:1rem;white-space:nowrap}
-.legend i{display:inline-block;width:11px;height:11px;border-radius:2px;vertical-align:middle;margin-right:.25rem}
-.cases th,.cases td{border:1px solid #eee;padding:.3rem .5rem;font-size:13px;text-align:center}
-.cases th{background:#f4f4f4}
-.id-cell{text-align:left}.cid{font-weight:600}.ccat{font-size:11px;color:#999}
-.badge{display:inline-block;min-width:1.4em;padding:.05em .4em;border-radius:5px;color:#fff;font-weight:700}
-.badge.good{background:#2e8b57}.badge.mid{background:#c89010}.badge.bad{background:#c0392b}.badge.na{background:#bbb}
-details{margin:.5rem 0;border:1px solid #eee;border-radius:8px;padding:.5rem .75rem;background:#fafafa}
-summary{cursor:pointer;font-weight:600}
-.spotlight{margin-top:1rem;border-color:#e7c9c9;background:#fdf6f6}
-.spot-h{font-weight:600;color:#b0413a;margin:.5rem 0 .2rem}
-.spotlight ul{margin:.2rem 0 .4rem 1rem;font-size:13px}.spotlight .ccat{color:#999;font-size:11px}
-.grade-block{border-top:1px solid #eee;padding:.4rem 0}.gb-id{font-weight:600;color:#0a5}
-.grade-block ul{margin:.2rem 0 .2rem 1rem;font-size:12px;color:#444}
-.transcript{border-top:1px solid #eee;padding:.6rem 0}.t-q{font-weight:600;color:#0a5}
-.t-a{white-space:pre-wrap;margin:.3rem 0}.cites{margin:.2rem 0 .2rem 1rem;color:#555}
+:root{
+  --color-background-primary:#ffffff;--color-background-secondary:#f5f4ef;--color-background-tertiary:#efede6;
+  --color-text-primary:#1a1a18;--color-text-secondary:#5f5e5a;--color-text-tertiary:#8a8980;
+  --color-text-success:#0f6e56;--color-text-danger:#a32d2d;--color-text-warning:#854f0b;
+  --color-background-success:#e1f5ee;--color-background-danger:#fcebeb;--color-background-warning:#faeeda;
+  --color-border-tertiary:rgba(0,0,0,.12);--color-border-secondary:rgba(0,0,0,.24);
+  --font-sans:system-ui,-apple-system,"Segoe UI",sans-serif;--font-mono:ui-monospace,Menlo,Consolas,monospace;
+}
+@media (prefers-color-scheme:dark){:root{
+  --color-background-primary:#211f1d;--color-background-secondary:#2a2825;--color-background-tertiary:#1a1917;
+  --color-text-primary:#ededea;--color-text-secondary:#b4b2a9;--color-text-tertiary:#888780;
+  --color-text-success:#5dcaa5;--color-text-danger:#f09595;--color-text-warning:#ef9f27;
+  --color-background-success:#0a4034;--color-background-danger:#4a1414;--color-background-warning:#523005;
+  --color-border-tertiary:rgba(255,255,255,.14);--color-border-secondary:rgba(255,255,255,.26);
+}}
+body{font-family:var(--font-sans);color:var(--color-text-primary);background:var(--color-background-tertiary);max-width:920px;margin:0 auto;padding:1.5rem;line-height:1.5}
+.er-card{background:var(--color-background-primary);border:0.5px solid var(--color-border-tertiary);border-radius:12px;padding:1rem 1.25rem;margin:1rem 0}
+.er-sec{font-size:13px;font-weight:500;color:var(--color-text-secondary);margin:0 0 12px}
+.er-row{display:flex;align-items:center;gap:10px;margin:9px 0}
+.er-lab{width:130px;flex:none;font-size:12px;color:var(--color-text-secondary)}
+.er-track{flex:1;height:18px;border-radius:5px;overflow:hidden;display:flex;background:var(--color-background-secondary)}
+.er-cnt{width:150px;flex:none;font-size:11px;color:var(--color-text-tertiary);text-align:right}
+.er-pill{font-size:11px;padding:2px 7px;border-radius:5px;display:inline-block;white-space:nowrap}
+.er-tbl{width:100%;border-collapse:collapse;table-layout:fixed;font-size:11.5px}
+.er-tbl td,.er-tbl th{padding:5px 6px;border-bottom:0.5px solid var(--color-border-tertiary);text-align:center}
+.er-tbl th{font-weight:500;color:var(--color-text-tertiary);font-size:10.5px;vertical-align:bottom;line-height:1.25}
+.spotlight{border-color:var(--color-border-secondary)}
+.spot-h{font-weight:500;color:var(--color-text-danger);font-size:12px;margin:.6rem 0 .2rem}
+.spotlight ul{margin:.2rem 0 .4rem 1.1rem;font-size:12px;color:var(--color-text-secondary)}
+.cb-grades{margin-top:.5rem;font-size:12px;color:var(--color-text-secondary)}.cb-grades ul{margin:.2rem 0 0 1.1rem}
+.cites{margin:.2rem 0 .2rem 1.1rem;font-size:12px;color:var(--color-text-secondary)}
+summary{cursor:pointer}
 """
 
 
 def write_html(path: str, report: dict) -> None:
-    meta = report["meta"]
+    m = report["meta"]
+    meta_line = (
+        f"agent: {_esc(m['agent_model'])} · judge: {_esc(m['judge_model'])} · "
+        f"{m['n_cases']} cases · {_esc(m['timestamp'])}"
+    )
     doc = (
-        "<!doctype html><html><head><meta charset='utf-8'>"
-        f"<title>Wiki-search eval — {_esc(meta['timestamp'])}</title>"
+        "<!doctype html><html><head><meta charset='utf-8'><title>Wiki-search eval report</title>"
         f"<style>{_CSS}</style></head><body>"
-        "<h1>Wikipedia-Grounded Q&amp;A — Eval Report</h1>"
-        f"<div class='meta'>Agent: {_esc(meta['agent_model'])} · Judge: {_esc(meta['judge_model'])} "
-        f"· {meta['n_cases']} cases · {_esc(meta['timestamp'])}</div>"
+        '<div style="display:flex;align-items:baseline;justify-content:space-between;flex-wrap:wrap;gap:6px;padding:1rem 0 0">'
+        '<span style="font-size:18px;font-weight:500">Wikipedia-Grounded Q&amp;A · Eval report</span>'
+        f'<span style="font-size:12px;color:var(--color-text-tertiary)">{meta_line}</span></div>'
         + _summary_cards(report)
-        + _spotlight(report)
-        + _chart_dimensions(report)
-        + _chart_categories(report)
         + _legend()
-        + _definitions()
-        + "<h3>Per-case results</h3>"
+        + _grader_bars(report)
         + _case_table(report)
-        + _detailed_grading(report)
-        + _transcript(report)
+        + _spotlight(report)
+        + _detailed_results(report)
         + "</body></html>"
     )
     with open(path, "w", encoding="utf-8") as fh:

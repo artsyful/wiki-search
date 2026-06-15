@@ -9,6 +9,7 @@ from aggregates.
 from __future__ import annotations
 
 import json
+import re
 from dataclasses import dataclass
 
 import anthropic
@@ -39,6 +40,13 @@ DIMENSION_DESCRIPTIONS = {
     CORRECTNESS: "Opus judge (0–2): answer vs reference_answer — Correct / Partial / Incorrect.",
     FAITHFULNESS: "Opus judge (0–2): every claim supported by retrieved text — Grounded / Minor gap / Unsupported.",
     BEHAVIOR: "Opus judge (0–2): special-case handling vs expected_behavior — Ideal / Acceptable / Poor.",
+}
+
+# Human-readable rubric labels per judge score (used by the report instead of raw 0/1/2).
+JUDGE_SCORE_LABELS = {
+    CORRECTNESS: {2: "Correct", 1: "Partial", 0: "Incorrect"},
+    FAITHFULNESS: {2: "Grounded", 1: "Minor gap", 0: "Unsupported"},
+    BEHAVIOR: {2: "Ideal", 1: "Acceptable", 0: "Poor"},
 }
 
 _JUDGE_SCHEMA = {
@@ -93,12 +101,26 @@ def grade_search_behavior(case: EvalCase, answer: AgentAnswer) -> GraderResult:
     return _code(SEARCH_BEHAVIOR, ok, rationale)
 
 
+# Thousands separators that appear *between digits*: comma, no-break space, narrow no-break
+# space, thin space. Stripped before matching so "1,710" matches "1710" (and vice versa).
+# Regular ASCII spaces are NOT stripped, to avoid merging two distinct numbers.
+_THOUSANDS_SEP = re.compile(r"(?<=\d)[,\u00a0\u202f\u2009](?=\d)")
+
+
+def _normalize_digits(text: str) -> str:
+    return _THOUSANDS_SEP.sub("", text.lower())
+
+
 def grade_accuracy(case: EvalCase, answer: AgentAnswer) -> GraderResult:
-    """Cheap deterministic correctness signal: are all gold_facts present in the answer?"""
+    """Cheap deterministic correctness signal: are all gold_facts present in the answer?
+
+    Number formatting is normalized first, so a gold fact like "1,710" matches an answer
+    that writes "1710" (or vice versa).
+    """
     if not case.gold_facts:
         return _na(ACCURACY, "code", "No gold facts defined for a keyword check.")
-    text = answer.text.lower()
-    missing = [fact for fact in case.gold_facts if fact.lower() not in text]
+    text = _normalize_digits(answer.text)
+    missing = [fact for fact in case.gold_facts if _normalize_digits(fact) not in text]
     if missing:
         return _code(ACCURACY, False, f"Missing expected fact(s): {', '.join(missing)}.")
     return _code(ACCURACY, True, f"All {len(case.gold_facts)} expected fact(s) present.")
@@ -152,11 +174,42 @@ You grade whether an answer is grounded in the retrieved Wikipedia text it was g
 Only the provided retrieved text counts as support — do not use your own knowledge. Return JSON {score, rationale}."""
 
 _BEHAVIOR_SYSTEM = """\
-You grade whether an answer follows the expected behavior policy for a special-case question. Score:
-- 2 (Ideal): handles the case exactly as the expected behavior requires.
-- 1 (Acceptable): right behavior but weakly executed — e.g. abstains but over-hedges, mentions other senses only vaguely, or labels a non-Wikipedia answer faintly.
-- 0 (Poor): wrong behavior — fabricates, fails to label a non-Wikipedia answer, adds an unsourced guess when it should abstain, or plays along with a false premise.
-Return JSON {score, rationale}."""
+You grade how well an answer handled the SPECIAL BEHAVIOR the case calls for, given its
+expected_behavior. Score on this scale:
+- 2 (Ideal): best handling for this kind of case.
+- 1 (Acceptable): reasonable but not ideal.
+- 0 (Poor): mishandled.
+Pick the row below that matches the expected_behavior, and apply its definitions of ideal /
+acceptable / poor:
+
+  - Answerable factual (single_hop, multi_hop, synthesis, list, temporal, obscure, partial):
+      ideal      = answered confidently and grounded; for a partial-findability question, answered the findable part AND explicitly stated the missing part isn't in Wikipedia
+      acceptable = answered but over/under-hedged, or vague about a gap it should have flagged
+      poor       = refused despite having the facts, or hedged into uselessness
+  - False premise:
+      ideal = explicitly flags and corrects the false premise;
+      acceptable = states correct facts that contradict the premise without explicitly calling it false;
+      poor = plays along with or accepts the false premise.
+  - Ambiguous entity:
+      ideal = answers the most likely reading AND notes the alternative; acceptable = answers one reading without noting alternatives;
+      poor = responds only with a clarifying question, or picks an unreasonable reading
+  - Not-in-Wikipedia (unanswerable):
+      ideal = cleanly declines and explains why it is unanswerable;
+      acceptable = hedges appropriately but does not cleanly decline;
+      poor = fabricates an answer or makes a confident prediction.
+  - Honest scoping (the question is partly answerable from Wikipedia and partly not):
+      ideal = answers the covered part (grounded + cited) AND explicitly flags the uncovered part as not available on Wikipedia, without guessing it;
+      acceptable = answers the covered part and does not fabricate the missing part, but is vague about the gap rather than clearly flagging it;
+      poor = fabricates, estimates, or guesses the unavailable part, or fails to answer the covered part.
+  - Subjective / speculative:
+      ideal = explains Wikipedia gives no factual answer and asserts no opinion as fact; acceptable = declines but presents ungrounded specifics as if authoritative;
+      poor = answers as if it were factual
+  - No-search (arithmetic / translation / reasoning) or meta / self-referential:
+      ideal = answered directly without searching AND explicitly noted that no Wikipedia search was needed for this kind of question
+      acceptable = answered correctly without searching but did NOT make clear a search wasn't needed, OR searched unnecessarily
+      poor = treated it as a Wikipedia lookup, or got it wrong
+
+Map ideal=2, acceptable=1, poor=0. Judge only the special-case handling. Return JSON {score, rationale}."""
 
 
 def judge_correctness(client: anthropic.Anthropic, case: EvalCase, answer: AgentAnswer) -> GraderResult:

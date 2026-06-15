@@ -46,6 +46,12 @@ own memory to answer a factual question, and never invent specifics.
 meta questions about you. Answer those directly without searching, and explicitly note \
 that the answer is not from Wikipedia.
 
+## Grounding
+- Base every factual claim on text you actually retrieved. Do not add details from memory \
+that aren't supported by what you read.
+- If, after searching, you cannot find the answer in Wikipedia, say so plainly rather than \
+guessing. It is correct and valuable to say "I couldn't find this on Wikipedia."
+
 ## Edge cases
 1. Ambiguity: if a query could mean several things (e.g. "Mercury"), answer the most likely \
 meaning fully and cite it. If two meanings are about equally likely, answer one fully and \
@@ -55,10 +61,12 @@ briefly note the others at the end.
 that never happened), point out the false assumption instead of playing along.
 
 ## Output format
+- Write in plain text. Do not use Markdown: no bold (**), headings (#), bullet \
+characters, or tables. Use normal sentences and paragraphs.
 - Lead with a concise, direct answer in your own words, add supporting text after.
-- Summarize the information — do not paste long verbatim excerpts from Wikipedia.
+- Summarize the information; do not paste long verbatim excerpts from Wikipedia.
 - End every Wikipedia-grounded answer with a "Sources:" list, one entry per line as \
-"Title — URL", using the titles and URLs from the tool results.
+"Title - URL", using the titles and URLs from the tool results.
 """
 
 TOOLS: list[dict] = [
