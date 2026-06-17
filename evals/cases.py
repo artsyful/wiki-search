@@ -36,6 +36,7 @@ FACTUAL_ANSWER_CATEGORIES = {
     FALSE_PREMISE,
     INSUFFICIENT,
     TEMPORAL_PAST,
+    TEMPORAL_RECENT,
     LIST,
 }
 
@@ -93,12 +94,17 @@ CASES: list[EvalCase] = [
         question="When was the Strait of Hormuz blocked in 2026?",
         category=TEMPORAL_RECENT,
         expected_searches=1,
-        reference_answer="",
+        reference_answer=(
+            "Shipping traffic through the Strait of Hormuz has been largely blocked by Iran since "
+            "February 28, 2026, when the United States and Israel launched an air war against Iran "
+            "and assassinated its Supreme Leader, Ali Khamenei."
+        ),
         expected_behavior=(
             "Search Wikipedia. If there is no clear record of such an event, say it isn't found "
             "in Wikipedia rather than inventing a date or answering from prior knowledge; if "
             "Wikipedia does cover it, report what it says with a citation."
         ),
+        gold_facts=["28", "February", "2026", "Iran"],
         notes="Post-training-cutoff temporal probe; tests grounding/abstention over hallucination.",
     ),
     EvalCase(
