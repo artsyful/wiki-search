@@ -209,6 +209,13 @@ acceptable / poor:
       acceptable = answered correctly without searching but did NOT make clear a search wasn't needed, OR searched unnecessarily
       poor = treated it as a Wikipedia lookup, or got it wrong
 
+Grounding vs fabrication: when retrieved Wikipedia text is provided below, treat it as the source
+of truth for what Wikipedia contains. Judge grounding and fabrication against that text, NOT your
+own knowledge. An answer whose claims and citations are supported by the retrieved text is
+grounded, even if the event is recent or unfamiliar to you (your training cutoff is not evidence
+that an article does not exist). Only treat an answer as fabricated when its claims are absent
+from or contradicted by the retrieved text.
+
 Map ideal=2, acceptable=1, poor=0. Judge only the special-case handling. Return JSON {score, rationale}."""
 
 
@@ -243,6 +250,9 @@ def judge_behavior(client: anthropic.Anthropic, case: EvalCase, answer: AgentAns
         f"Expected behavior: {case.expected_behavior}\n\n"
         f"Agent answer:\n{answer.text}"
     )
+    if answer.retrieved_context:
+        sources = "\n\n---\n\n".join(answer.retrieved_context)
+        user += f"\n\nRetrieved Wikipedia text the agent saw:\n{sources}"
     score, rationale = _run_judge(client, _BEHAVIOR_SYSTEM, user)
     return _judge_result(BEHAVIOR, score, rationale)
 

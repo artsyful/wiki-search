@@ -138,3 +138,26 @@ case, which this time did hit the cap (tool_calls=5, 3 searches): instead of the
 it returned a grounded answer (faithfulness 2, behavior 2, accuracy and citations pass, correctness
 1), with no empty fallback and no thinking-tag leak. The exact cap-hit path that used to fail now
 produces a real answer.
+
+### 18. Enabled accuracy and correctness grading on the post-cutoff temporal case — ~4:50 PM
+The `hormuz_blocked_2026` case (a post-training-cutoff temporal probe) was only being graded on
+behavior and faithfulness; accuracy and correctness both reported n/a. Accuracy was n/a because the
+case had no `gold_facts`, and correctness was n/a because `TEMPORAL_RECENT` was not in
+`FACTUAL_ANSWER_CATEGORIES`, so the correctness judge skipped it. I added the Wikipedia ground truth
+as the `reference_answer` (the 2026 Strait of Hormuz crisis: largely blocked by Iran since 28
+February 2026, after the US and Israel launched an air war and Khamenei was assassinated), set
+`gold_facts=["28", "February", "2026", "Iran"]`, and added `TEMPORAL_RECENT` to the factual-answer
+set. This is a category-wide change, which is intended: recent factual events should still be checked
+for correctness and accuracy, not just grounding.
+
+### 19. Gave the behavior judge the retrieved context so it stops calling grounded recent answers fabricated — ~5:00 PM
+With accuracy and correctness now enabled, the `hormuz_blocked_2026` behavior judge was the holdout:
+it scored 0 in three of four prior runs, calling the (correct, cited) answer a fabrication because
+the event postdates its own training cutoff. The faithfulness judge mostly passed the same answer
+because it is given the retrieved Wikipedia text and the behavior judge was not. The fix mirrors
+faithfulness: `judge_behavior` now appends `answer.retrieved_context` to its prompt, and
+`_BEHAVIOR_SYSTEM` gained a "Grounding vs fabrication" clause telling it to treat the retrieved text
+as the source of truth for what Wikipedia contains, judge fabrication against that text rather than
+its own knowledge, and that "your training cutoff is not evidence that an article does not exist."
+Reran the case: behavior went from 0 to 2, with a rationale that explicitly cites the retrieved 2026
+crisis article. All six dimensions now pass, overall 2.00.
