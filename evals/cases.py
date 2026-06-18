@@ -162,22 +162,22 @@ CASES: list[EvalCase] = [
         notes="Multi-hop with an arithmetic operation (subtraction) on the retrieved facts.",
     ),
     EvalCase(
-        id="baltic_states_total_population",
-        question="What is the combined population of the three Baltic states?",
+        id="baltic_states_total_area",
+        question="What is the combined land area of the three Baltic states?",
         category=MULTI_HOP,
         expected_searches=3,
         reference_answer=(
-            "Estonia (~1.3M), Latvia (~1.8M), and Lithuania (~2.8M) total roughly 5.9 million."
+            "Estonia (~45,000 km2), Latvia (~64,500 km2), and Lithuania (~65,300 km2) total "
+            "roughly 175,000 km2."
         ),
         expected_behavior=(
-            "Retrieve each country's population from its article and sum them, grounded in the "
+            "Retrieve each country's area from its article and sum them, grounded in the "
             "sources; cite each."
         ),
         gold_facts=["Estonia", "Latvia", "Lithuania"],
         notes=(
-            "Multi-hop that aggregates (sums) data across several source articles. "
-            "TODO: populations change over time → reference is brittle; replace with a stable "
-            "aggregation fact (e.g. summing fixed quantities like areas or founding years)."
+            "Multi-hop that aggregates (sums) a fixed quantity (area) across several source "
+            "articles. Area is used instead of population so the reference does not drift over time."
         ),
     ),
     EvalCase(

@@ -161,3 +161,15 @@ as the source of truth for what Wikipedia contains, judge fabrication against th
 its own knowledge, and that "your training cutoff is not evidence that an article does not exist."
 Reran the case: behavior went from 0 to 2, with a rationale that explicitly cites the retrieved 2026
 crisis article. All six dimensions now pass, overall 2.00.
+
+### 20. Swapped the brittle Baltic population aggregation for a fixed-quantity (area) one — ~12:13 PM
+The multi-hop aggregation case asked for the combined population of the three Baltic states. The
+gold_facts were already drift-proof (the three country names, not a number), but the correctness
+judge still graded against a `reference_answer` of "roughly 5.9 million", which goes stale every year
+as Wikipedia updates each country's population, so a correct grounded answer could start diverging
+from the reference and be wrongly docked. The case's own notes flagged this. Replaced it with
+`baltic_states_total_area` ("combined land area of the three Baltic states"): same multi-hop shape
+(three separate article fetches, then a sum) over a fixed quantity that does not drift. Kept
+gold_facts on the three country names and set the reference to the area sum (~175,000 km2). Reran:
+the agent did three searches and summed Estonia 45,335 + Latvia 64,573 + Lithuania 65,300 = 175,208
+km2, and all six dimensions passed at 2.00.
