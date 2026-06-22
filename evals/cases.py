@@ -264,21 +264,6 @@ CASES: list[EvalCase] = [
         ),
     ),
     EvalCase(
-        id="einstein_last_words",
-        question="What were Albert Einstein's last words?",
-        category=INSUFFICIENT,
-        expected_searches=1,
-        reference_answer=(
-            "His exact last words are not known — he spoke in German to a nurse who did not "
-            "understand it, so they went unrecorded."
-        ),
-        expected_behavior=(
-            "Report what Wikipedia says (his final words are unknown/unrecorded) — answer the "
-            "known part and explicitly flag that the exact words are not available."
-        ),
-        gold_facts=["I want to go when I want"],
-    ),
-    EvalCase(
         id="pushpavanam_village_avg_age",
         question="Tell me more about Pushpavanam village and tell me the average age of people in it.",
         category=INSUFFICIENT,

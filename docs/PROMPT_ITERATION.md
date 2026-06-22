@@ -173,3 +173,19 @@ from the reference and be wrongly docked. The case's own notes flagged this. Rep
 gold_facts on the three country names and set the reference to the area sum (~175,000 km2). Reran:
 the agent did three searches and summed Estonia 45,335 + Latvia 64,573 + Lithuania 65,300 = 175,208
 km2, and all six dimensions passed at 2.00.
+
+### 21. Removed the self-contradictory Einstein last-words case — ~2:23 PM
+`einstein_last_words` ("What were Albert Einstein's last words?") was failing correctness and
+behavior (both 0) in the last full run while faithfulness passed (2). The case contradicted itself:
+its `gold_facts` were the documented quote from List of last words (20th century) ("I want to go when
+I want..."), but its `reference_answer` asserted the opposite, that his last words are "not known."
+So a grounded, cited answer based on the documented quote was scored as a contradiction. I first
+tried to reframe the case to credit both facts (the documented quote AND the popular anecdote that
+his true final words were spoken in German to a nurse and went unrecorded). Reran: correctness and
+behavior recovered to 2, but faithfulness dropped to 0, because the nurse anecdote is not retrievable
+through the agent's tools (checked the List of last words article, the Albert Einstein article's
+Death section, and the Notes section: none contain it; the [note 46] footnote is not surfaced by the
+plain-text extract API). Requiring that caveat forced the agent to state an ungrounded claim. Rather
+than keep iterating on a case whose "insufficient data" premise turned out to be false (Wikipedia
+does document a last-words quote), I removed it. The found_but_insufficient category is still covered
+by `pushpavanam_village_avg_age`. Suite is now 20 cases.
