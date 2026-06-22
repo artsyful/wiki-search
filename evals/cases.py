@@ -197,6 +197,23 @@ CASES: list[EvalCase] = [
         notes="Corrected from an earlier wrong gold fact (1,665 is not in the article).",
     ),
     EvalCase(
+        id="saturn_v_height",
+        question="How tall is the Saturn V rocket?",
+        category=DEEP_SECTION,
+        expected_searches=1,
+        reference_answer="The Saturn V stood 363 feet (111 m) tall with the Apollo spacecraft on top.",
+        expected_behavior=(
+            "Search, then fetch the Specifications section (the height is not in the article "
+            "summary); report the height Wikipedia gives (363 ft / 111 m) and cite."
+        ),
+        gold_facts=["363"],
+        notes=(
+            "Straightforward deep-section: the fact is absent from the summary but lives in a "
+            "clearly-named Specifications section the agent can pick. Positive counterpart to "
+            "eiffel_tower_steps, where the fact hides in an unexpected section."
+        ),
+    ),
+    EvalCase(
         id="mercury_ambiguous",
         question="Tell me about Mercury.",
         category=AMBIGUOUS,

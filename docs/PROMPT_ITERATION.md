@@ -189,3 +189,14 @@ plain-text extract API). Requiring that caveat forced the agent to state an ungr
 than keep iterating on a case whose "insufficient data" premise turned out to be false (Wikipedia
 does document a last-words quote), I removed it. The found_but_insufficient category is still covered
 by `pushpavanam_village_avg_age`. Suite is now 20 cases.
+
+### 22. Added a straightforward deep-section case for breadth — ~5:43 PM
+The only deep_section_factual case was `eiffel_tower_steps`, where the gold fact (1,710 steps) hides
+in an oddly-named "Inauguration and the 1889 exposition" history section and the agent fails to drill
+into it. So the dimension only ever demonstrated failure, with no positive example of the agent
+doing deep-section retrieval when the section is well-signposted. Added `saturn_v_height` ("How tall
+is the Saturn V rocket?"). Vetted against the live article first: the height is absent from the
+summary the agent sees (so it forces a fetch_section) but lives in a clearly-named "Specifications"
+section that is in the agent-visible section list. Reran: the agent did 1 search + 1 fetch_section,
+reported "363 feet (111 meters)", and passed all six dimensions at 2.00. Suite is now 21 cases with
+two deep-section cases: one pass-expected (saturn_v_height), one stress (eiffel_tower_steps).
