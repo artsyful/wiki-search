@@ -200,3 +200,25 @@ summary the agent sees (so it forces a fetch_section) but lives in a clearly-nam
 section that is in the agent-visible section list. Reran: the agent did 1 search + 1 fetch_section,
 reported "363 feet (111 meters)", and passed all six dimensions at 2.00. Suite is now 21 cases with
 two deep-section cases: one pass-expected (saturn_v_height), one stress (eiffel_tower_steps).
+
+### 23. Replaced section-specific fetch with a full-article fetch — `src/wiki_client.py`, `src/prompts.py`, `src/agent.py`
+- **Failure:** the `fetch_section(title, section)` tool forced the agent to *name* a section, and it
+  failed when the answer lived under an unintuitive heading. `eiffel_tower_steps` was the standing
+  example: the 1,710-step figure sits in an "Inauguration and the 1889 exposition" history section,
+  so across runs the agent fetched plausible-sounding sections, never reached it, and scored accuracy
+  fail / correctness 1 (and, after the retrieval-grounded behavior judge, behavior 2 only because it
+  honestly flagged the gap). The split's economy is really a *search*-stage concern (don't dump ~3
+  full articles per query); at *fetch* time the agent has already chosen one article, so returning
+  the whole body is a bounded, post-decision cost and avoids the section-guessing failure.
+- **Change:** replaced `fetch_section(title, section)` with `fetch_article(title)` — one
+  `prop=extracts&explaintext` call returning the full plain text (trailing boilerplate stripped,
+  capped at 40k chars via `MAX_ARTICLE_CHARS`); renamed `SectionContent` → `ArticleContent` (dropped
+  the `section` field); updated the tool schema (removed the `section` param) and the system-prompt
+  guidance to "fetch the full article and read it; the detail may sit in a section whose title isn't
+  the obvious one"; deleted the now-unused HTML-stripping helpers.
+- **Result:** `eiffel_tower_steps` went from accuracy fail / correctness 1 to all six dimensions 2.00,
+  and its tool use dropped from 2 searches + 3 fetches to 1 search + 1 fetch (fewer round trips).
+  Full 21-case suite: overall mean 1.94/2, 99% pass; accuracy 100% (16), correctness 2.00, behavior
+  1.95, faithfulness 1.86. No regression from the change: the one sub-2 cell is
+  `list_switzerland_borders` (faithfulness 0), a summary-only case (0 fetches) where the agent added
+  an ungrounded "doubly landlocked" factoid from memory, unrelated to the fetch tool.

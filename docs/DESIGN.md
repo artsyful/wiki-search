@@ -5,7 +5,7 @@ High-level design proposal for the agent logic, tool use, and CLI. Implements th
 
 ## Overview
 A single-loop tool-using agent: Claude + **two** Wikipedia tools (`search_wikipedia` and
-`fetch_section`) over a live MediaWiki API integration, wrapped in an interactive CLI. The
+`fetch_article`) over a live MediaWiki API integration, wrapped in an interactive CLI. The
 system prompt encodes the PRD behaviors (bias-to-search, grounding, labeling non-Wikipedia
 answers, pure abstention, citations).
 
@@ -28,29 +28,37 @@ model is named in the writeup per the assignment constraint.
 5. Stop when Claude returns a final text answer.
 
 ## Tools (two-tool design)
-Splitting search from section-fetch keeps context lean: a single broad search that dumped
+Splitting search from article-fetch keeps context lean: a single broad search that dumped
 multiple full articles would bloat the context, while most Wikipedia **summaries already answer
-simple questions**. So the agent gets a cheap overview first and only drills into a section when
+simple questions**. So the agent gets a cheap overview first and only fetches a full article when
 it needs to.
 
 1. **`search_wikipedia(query: str)`** — pass concise search terms (not the raw question), call
    repeatedly for multi-hop, reformulate on weak results. Returns a small set of candidate
    articles, each with **title, summary (intro extract), section titles, url**. The summary +
-   section list is usually enough to answer or to decide which section to fetch.
-2. **`fetch_section(title: str, section: str)`** — retrieve the plain text of a specific section
-   of a named article, for when the summary is insufficient. Returns **title, section, text,
-   url**.
+   section list is usually enough to answer or to decide which article to fetch.
+2. **`fetch_article(title: str)`** — retrieve the full plain text of one named article, for when
+   the summary is insufficient. Returns **title, text, url** (body capped, trailing boilerplate
+   like References/External links stripped).
 
-We start here and iterate (e.g. tune what `search` returns, or merge/split tools) if evals are
-weak.
+### Why fetch returns the whole article, not one section
+The economy that motivates the split lives at the **search** stage: returning full bodies for
+~3 candidate articles on every query would blow up context. That is preserved. The **fetch**
+stage is different — by then the agent has already chosen *one* article and decided its summary
+is insufficient, so returning that single body in full is a bounded, post-decision cost. An
+earlier `fetch_section(title, section)` design forced the agent to *name* a section, which failed
+when the answer lived under an unintuitive heading (e.g. the Eiffel Tower's 1,710-step figure sits
+in an 1889-exposition history section, not a "steps" section). Returning the whole article removes
+that guessing failure and tends to *reduce* round trips (one full fetch instead of several
+targeted ones, each of which replays the growing message history). A char cap bounds the rare very
+large article.
 
 ## Retrieval Integration (live MediaWiki API)
 - **Search** (`search_wikipedia`): `list=search` for candidate titles, then per top-K (~3) page
   fetch the **intro extract** (`prop=extracts&exintro&explaintext`) and the **section list**
   (`action=parse&prop=sections`). Assemble into `SearchResult`s.
-- **Section fetch** (`fetch_section`): resolve the section index for the given title+section via
-  `prop=sections`, then pull that section's plain text (`action=parse&section=N` → strip markup,
-  or `prop=extracts` scoped to the section). Returns a `SectionContent`.
+- **Article fetch** (`fetch_article`): one `prop=extracts&explaintext` call for the full plain
+  text of the title, trim trailing boilerplate sections, cap length. Returns an `ArticleContent`.
 - One thin client module; no local index. Zero/empty results are returned cleanly so the agent
   can reformulate or abstain. All requests retry on HTTP 429 with exponential backoff (honoring
   `Retry-After`), since Wikipedia throttles bursty traffic during eval runs.
@@ -74,7 +82,7 @@ weak.
   literals across files).
 - `@dataclass` returns between internal functions:
   - `SearchResult(title: str, summary: str, section_titles: list[str], url: str)`
-  - `SectionContent(title: str, section: str, text: str, url: str)`
+  - `ArticleContent(title: str, text: str, url: str)`
   - `Citation(title: str, url: str)`
   - `AgentAnswer(text, citations, used_search, tool_calls, searches, retrieved_context)`
     — `searches` (count of search calls) and `retrieved_context` (tool results seen) feed the evals.
@@ -89,7 +97,7 @@ wiki-search/
 ├── .env.example              # ANTHROPIC_API_KEY, optional WIKI_MODEL
 ├── src/
 │   ├── __init__.py
-│   ├── wiki_client.py        # MediaWiki search + section fetch → SearchResult / SectionContent
+│   ├── wiki_client.py        # MediaWiki search + article fetch → SearchResult / ArticleContent
 │   ├── prompts.py            # system prompt + the two tool schemas + constants
 │   ├── agent.py              # tool-use loop → AgentAnswer
 │   └── cli.py                # interactive REPL + demo mode + rich rendering  (entry: python -m src.cli)

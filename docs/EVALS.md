@@ -57,7 +57,7 @@ went wrong (no fabrication, no false hedging).
 - **Multi-hop factual** — e.g. "population of the capital of the 2018 World Cup winner"
   (`expected_searches ≥ 2`).
 - **Deep-section factual** — a detail that lives in a body section, not the intro, so the agent
-  must call `fetch_section` after searching (e.g. a specific figure from an article's "History"
+  must call `fetch_article` after searching (e.g. a specific figure from an article's "History"
   or "Climate" section).
 - **Ambiguous entity** — e.g. "Mercury" (answer one sense fully + mention the others).
 - **False premise** — question with a wrong assumption (e.g. "When did Einstein win his two Nobel

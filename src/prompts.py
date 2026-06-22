@@ -7,7 +7,7 @@ import os
 DEFAULT_MODEL = os.environ.get("WIKI_MODEL", "claude-sonnet-4-6")
 
 SEARCH_TOOL = "search_wikipedia"
-FETCH_TOOL = "fetch_section"
+FETCH_TOOL = "fetch_article"
 
 SYSTEM_PROMPT = """\
 ## Role
@@ -19,11 +19,12 @@ Wikipedia, not from your own memory.
 (e.g. "Mount Everest height"), not the user's full sentence. It returns candidate \
 articles, each with a short summary and a list of section titles. The summary alone usually \
 answers simple questions.
-- fetch_section(title, section): when a summary is not enough, fetch the full text of a \
-specific section of one of the returned articles.
+- fetch_article(title): when a summary is not enough, fetch the full text of one of the \
+returned articles and read it.
 - If the summary doesn't contain a specific figure or detail the question asks for, fetch the \
-most relevant section before answering — don't answer from the summary alone or claim the \
-detail is unavailable until you've checked the section most likely to contain it.
+full article before answering — don't answer from the summary alone or claim the detail is \
+unavailable until you've read the article. The detail may sit in a section whose title isn't \
+the obvious one, so read the whole article rather than assuming where it should be.
 - Multi-hop questions: search step by step — find one fact, then search again for the \
 next. You may also search several topics and combine or compute over the results.
 - If results are weak or empty, reformulate the query and try again before giving up.
@@ -94,10 +95,10 @@ TOOLS: list[dict] = [
     {
         "name": FETCH_TOOL,
         "description": (
-            "Fetch the full plain text of a specific section of a Wikipedia article you "
-            "already found via search_wikipedia. Call this only when an article's summary "
-            "does not contain the detail you need. Provide the exact article title and one "
-            "of the section titles returned by search_wikipedia."
+            "Fetch the full plain text of a Wikipedia article you already found via "
+            "search_wikipedia. Call this when an article's summary does not contain the "
+            "detail you need. Provide the exact article title from a search_wikipedia "
+            "result; the whole article is returned, so you do not need to guess a section."
         ),
         "input_schema": {
             "type": "object",
@@ -106,12 +107,8 @@ TOOLS: list[dict] = [
                     "type": "string",
                     "description": "Exact article title from a search_wikipedia result.",
                 },
-                "section": {
-                    "type": "string",
-                    "description": "A section title listed for that article.",
-                },
             },
-            "required": ["title", "section"],
+            "required": ["title"],
         },
     },
 ]

@@ -13,7 +13,7 @@ from typing import Callable
 import anthropic
 
 from .prompts import DEFAULT_MODEL, FETCH_TOOL, SEARCH_TOOL, SYSTEM_PROMPT, TOOLS
-from .wiki_client import fetch_section, search_wikipedia
+from .wiki_client import fetch_article, search_wikipedia
 
 MAX_TOOL_CALLS = 5
 MAX_TOKENS = 8000
@@ -167,16 +167,12 @@ class WikiAgent:
                 return _format_search_results(query, search_wikipedia(query))
             if name == FETCH_TOOL:
                 title = args.get("title", "")
-                section = args.get("section", "")
                 if on_progress:
-                    on_progress(f'Reading "{section}" from {title}…')
-                content = fetch_section(title, section)
+                    on_progress(f'Reading the "{title}" article…')
+                content = fetch_article(title)
                 if content is None:
-                    return f"No section matching '{section}' was found in '{title}'."
-                return (
-                    f"Section '{content.section}' of {content.title} "
-                    f"({content.url}):\n\n{content.text}"
-                )
+                    return f"No Wikipedia article found for '{title}'."
+                return f"Full article '{content.title}' ({content.url}):\n\n{content.text}"
         except Exception as exc:  # surface failures to the model, don't crash the loop
             return f"Tool '{name}' failed: {exc}. Try reformulating or another approach."
         return f"Unknown tool: {name}"

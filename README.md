@@ -44,7 +44,7 @@ in a browser for summary cards, a "needs attention" spotlight, a per-dimension c
 per-case grid, and a per-case "answer + grading" section.
 
 ## Results
-Latest full run (21 cases): **overall 94% pass, judge mean 1.81/2**. Per-dimension and per-case
+Latest full run (21 cases): **overall 99% pass, judge mean 1.94/2**. Per-dimension and per-case
 detail live in the timestamped reports under [`results/`](results/) (open the latest `.html`).
 
 What the evals taught us (see [`docs/PROMPT_ITERATION.md`](docs/PROMPT_ITERATION.md)):
@@ -52,14 +52,14 @@ What the evals taught us (see [`docs/PROMPT_ITERATION.md`](docs/PROMPT_ITERATION
   confident-but-ungrounded "famous" facts (e.g. the popular "1,665 steps" for the Eiffel Tower).
   A targeted prompt rule fixed this: the agent now stays grounded in retrieved text.
 - **Multi-hop and compute work well.** 3-hop chains, arithmetic over retrieved facts (Everest
-  minus K2), and cross-article aggregation (combined Baltic population) all pass.
+  minus K2), and cross-article aggregation (combined Baltic states' land area) all pass.
 - **LLM judges have a temporal blind spot.** On a real post-cutoff event (the 2026 Strait of
   Hormuz crisis), the agent correctly grounded its answer in Wikipedia, but the Opus judge,
   sharing the same training cutoff, wrongly penalized it as "speculative." A reminder that
   LLM-judge verdicts on recent events need a human in the loop.
 
 ## Requirements and Design
-Single-loop tool-using agent (Claude + `search_wikipedia` + `fetch_section` over the live
+Single-loop tool-using agent (Claude + `search_wikipedia` + `fetch_article` over the live
 MediaWiki API), wrapped in a `rich` CLI. See **[docs/DESIGN.md](docs/DESIGN.md)** for the
 agent/CLI design, **[docs/PRD.md](docs/PRD.md)** for product requirements, and
 **[docs/EVALS.md](docs/EVALS.md)** for the eval design.

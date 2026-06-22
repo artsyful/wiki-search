@@ -1,7 +1,7 @@
 """Thin live MediaWiki client backing the two Wikipedia tools.
 
 `search_wikipedia` returns a lightweight overview (summary + section titles) for the
-top candidate articles; `fetch_section` drills into one section's full text. See
+top candidate articles; `fetch_article` returns one article's full plain text. See
 docs/DESIGN.md → Retrieval Integration.
 """
 
@@ -10,7 +10,6 @@ from __future__ import annotations
 import re
 import time
 from dataclasses import dataclass
-from html.parser import HTMLParser
 from urllib.parse import quote
 
 import requests
@@ -21,7 +20,10 @@ USER_AGENT = "wiki-search-agent/0.1 (Anthropic prompt-eng take-home)"
 SEARCH_LIMIT = 5
 TOP_K_ARTICLES = 3
 HTTP_TIMEOUT = 15
-MAX_SECTION_CHARS = 6000
+# Cap on a single full-article fetch, so a very large article (e.g. a country or war)
+# stays bounded. Fetch is the targeted, post-decision call for one article, so this is
+# the only place we return long text; search never returns full bodies.
+MAX_ARTICLE_CHARS = 40000
 MAX_RETRIES = 4  # retry on HTTP 429 (rate limit) with exponential backoff
 BACKOFF_BASE = 1.0
 
@@ -49,11 +51,10 @@ class SearchResult:
 
 
 @dataclass
-class SectionContent:
-    """The plain text of one article section from `fetch_section`."""
+class ArticleContent:
+    """The full plain text of one article from `fetch_article`."""
 
     title: str
-    section: str
     text: str
     url: str
 
@@ -93,38 +94,6 @@ def url_exists(url: str) -> bool:
         return resp.status_code == 200
     except requests.RequestException:
         return False
-
-
-class _TextExtractor(HTMLParser):
-    """Collect visible text, dropping tables/citations/scripts."""
-
-    _SKIP_TAGS = {"style", "script", "sup", "table"}
-
-    def __init__(self) -> None:
-        super().__init__()
-        self.parts: list[str] = []
-        self._skip_depth = 0
-
-    def handle_starttag(self, tag: str, attrs: list[tuple[str, str | None]]) -> None:
-        if tag in self._SKIP_TAGS:
-            self._skip_depth += 1
-
-    def handle_endtag(self, tag: str) -> None:
-        if tag in self._SKIP_TAGS and self._skip_depth:
-            self._skip_depth -= 1
-
-    def handle_data(self, data: str) -> None:
-        if not self._skip_depth:
-            self.parts.append(data)
-
-
-def _strip_html(html: str) -> str:
-    parser = _TextExtractor()
-    parser.feed(html)
-    text = "".join(parser.parts)
-    text = re.sub(r"\[edit\]", "", text)
-    text = re.sub(r"\n{3,}", "\n\n", text)
-    return text.strip()
 
 
 def _fetch_extracts(titles: list[str]) -> dict[str, tuple[str, str]]:
@@ -208,41 +177,46 @@ def search_wikipedia(
     return results
 
 
-def fetch_section(title: str, section: str) -> SectionContent | None:
-    """Return the plain text of `section` within article `title`, or None if absent."""
-    try:
-        data = _get({"action": "parse", "page": title, "prop": "sections", "redirects": 1})
-    except requests.RequestException:
-        return None
-    sections = data.get("parse", {}).get("sections", [])
+def _trim_apparatus(text: str) -> str:
+    """Cut the article at the first trailing boilerplate heading (References, Notes, etc.).
 
-    wanted = section.strip().lower()
-    index: str | None = None
-    for entry in sections:
-        if (entry.get("line") or "").strip().lower() == wanted:
-            index = entry.get("index")
-            break
-    if index is None:  # fall back to a contains-match
-        for entry in sections:
-            if wanted in (entry.get("line") or "").strip().lower():
-                index = entry.get("index")
-                break
-    if index is None:
-        return None
+    The plain-text extract renders section headings as bare lines, so a heading that is
+    exactly a SKIP_SECTIONS name on its own line marks where the encyclopedic body ends.
+    """
+    cut = len(text)
+    for name in SKIP_SECTIONS:
+        match = re.search(rf"(?im)^\s*{re.escape(name)}\s*$", text)
+        if match:
+            cut = min(cut, match.start())
+    return text[:cut].strip()
 
+
+def fetch_article(title: str) -> ArticleContent | None:
+    """Return the full plain text of article `title`, or None if it does not exist.
+
+    This is the targeted, post-decision call: the agent has already picked one article
+    from search and found its summary insufficient, so we return the whole body (minus
+    trailing boilerplate, capped) rather than a single section the agent must name.
+    """
     try:
-        body = _get(
+        data = _get(
             {
-                "action": "parse",
-                "page": title,
-                "prop": "text",
-                "section": index,
+                "action": "query",
+                "prop": "extracts|info",
+                "explaintext": 1,
+                "inprop": "url",
                 "redirects": 1,
-                "disabletoc": 1,
+                "titles": title,
             }
         )
     except requests.RequestException:
         return None
-    html = body.get("parse", {}).get("text", {}).get("*", "")
-    text = _strip_html(html)[:MAX_SECTION_CHARS]
-    return SectionContent(title=title, section=section, text=text, url=_url_for(title))
+    pages = data.get("query", {}).get("pages", {})
+    page = next(iter(pages.values()), None)
+    if not page or page.get("missing") is not None or "extract" not in page:
+        return None
+    text = _trim_apparatus(page.get("extract") or "")[:MAX_ARTICLE_CHARS]
+    if not text:
+        return None
+    url = page.get("fullurl") or _url_for(title)
+    return ArticleContent(title=page.get("title") or title, text=text, url=url)

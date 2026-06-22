@@ -43,7 +43,7 @@ FACTUAL_ANSWER_CATEGORIES = {
 CATEGORY_DESCRIPTIONS = {
     SINGLE_HOP: "Direct factual question answerable from one article's summary.",
     MULTI_HOP: "Requires chaining several searches to combine facts.",
-    DEEP_SECTION: "Detail lives in a body section, so the agent must fetch_section after searching.",
+    DEEP_SECTION: "Detail lives in the article body, so the agent must fetch_article after searching.",
     AMBIGUOUS: "Entity with several common senses; answer one fully and mention the others.",
     FALSE_PREMISE: "Question embeds a wrong assumption; correct it, grounded.",
     NON_FACTUAL: "Arithmetic / translation / reasoning; answer directly, label as not-from-Wikipedia.",
