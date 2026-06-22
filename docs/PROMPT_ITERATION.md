@@ -222,19 +222,3 @@ two deep-section cases: one pass-expected (saturn_v_height), one stress (eiffel_
   1.95, faithfulness 1.86. No regression from the change: the one sub-2 cell is
   `list_switzerland_borders` (faithfulness 0), a summary-only case (0 fetches) where the agent added
   an ungrounded "doubly landlocked" factoid from memory, unrelated to the fetch tool.
-
-### 24. Verified the list_switzerland_borders faithfulness 0 is a correct grade (no change) — analysis only
-- **Question:** was the faithfulness judge right to score `list_switzerland_borders` a 0 for the
-  claim that Liechtenstein is "one of only two doubly landlocked countries in the world"?
-- **Check:** reconstructed what the agent actually retrieved (2 searches, 0 fetches; it cited only
-  Switzerland and Geography of Switzerland). Those summaries contain "landlocked" only about
-  *Switzerland*, never "doubly landlocked" and never "one of only two." The "doubly landlocked"
-  descriptor lives in the Liechtenstein and Landlocked-country articles, which the agent never
-  searched; and even Liechtenstein's own summary does not contain the "only two" framing. So the
-  claim is true in the real world but absent from the retrieved text.
-- **Result:** the grade is correct. It is exactly the grounding violation the dimension exists to
-  catch (a true-but-unretrieved fact pulled from memory), and the judge correctly credited the five
-  borders as supported and docked only the one material unsupported addition. No case or grader
-  change. Side observation: `retrieved_context` is not persisted to the JSON report (used at grading
-  time, then dropped), so post-hoc faithfulness audits require reconstructing the searches; serializing
-  it (truncated) is a possible future reporting tweak.
